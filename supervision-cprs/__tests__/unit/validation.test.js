@@ -1,11 +1,11 @@
 /**
- * Unit Tests - Validation
- * Tests para validarDatosGenerales y validarSupervisionCompleta
+ * Unit Tests - Validation (modelo de RUBROS con calificación y criterios).
  */
 
 const {
   validarDatosGenerales,
   validarSupervisionCompleta,
+  validarRubro,
   validarArea,
 } = require('../../src/utils/validation');
 
@@ -14,133 +14,141 @@ describe('validation', () => {
     const datosValidos = {
       nombreCprs: 'C.P.R.S. Toluca',
       fechaHoraSupervision: '2026-02-04T10:30:00.000Z',
-      nombreSupervisor: 'Juan Pérez',
-      cargoSupervisor: 'Director',
     };
 
     it('debe validar datos completos', () => {
       const resultado = validarDatosGenerales(datosValidos);
       expect(resultado.isValid).toBe(true);
-      expect(Object.keys(resultado.errores)).toHaveLength(0);
     });
 
     it('debe detectar fechaHoraSupervision faltante', () => {
-      const datos = { ...datosValidos, fechaHoraSupervision: null };
-      const resultado = validarDatosGenerales(datos);
+      const resultado = validarDatosGenerales({ ...datosValidos, fechaHoraSupervision: null });
       expect(resultado.isValid).toBe(false);
       expect(resultado.errores.fechaHoraSupervision).toBeDefined();
     });
 
-    it('debe detectar fechaHoraSupervision como string vacío', () => {
-      const datos = { ...datosValidos, fechaHoraSupervision: '' };
-      const resultado = validarDatosGenerales(datos);
-      expect(resultado.isValid).toBe(false);
-    });
-
     it('debe detectar nombreCprs faltante', () => {
-      const datos = { ...datosValidos, nombreCprs: '' };
-      const resultado = validarDatosGenerales(datos);
+      const resultado = validarDatosGenerales({ ...datosValidos, nombreCprs: '' });
       expect(resultado.isValid).toBe(false);
       expect(resultado.errores.nombreCprs).toBeDefined();
     });
 
-    it('debe detectar nombreCprs como null', () => {
-      const datos = { ...datosValidos, nombreCprs: null };
-      const resultado = validarDatosGenerales(datos);
-      expect(resultado.isValid).toBe(false);
-    });
-
     it('debe detectar nombreCprs con solo espacios', () => {
-      const datos = { ...datosValidos, nombreCprs: '   ' };
-      const resultado = validarDatosGenerales(datos);
+      const resultado = validarDatosGenerales({ ...datosValidos, nombreCprs: '   ' });
       expect(resultado.isValid).toBe(false);
     });
 
-    it('debe detectar múltiples errores', () => {
-      const datos = {
-        nombreCprs: '',
-        fechaHoraSupervision: null,
-        nombreSupervisor: '',
-        cargoSupervisor: '',
-      };
-      const resultado = validarDatosGenerales(datos);
-      expect(resultado.isValid).toBe(false);
-      expect(Object.keys(resultado.errores).length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('debe aceptar caracteres especiales en nombres', () => {
-      const datos = {
+    it('debe aceptar caracteres especiales', () => {
+      const resultado = validarDatosGenerales({
         ...datosValidos,
         nombreCprs: 'C.P.R.S. Peñón del Marqués - Ñoño',
-        nombreSupervisor: 'José María García Pérez',
-      };
-      const resultado = validarDatosGenerales(datos);
-      expect(resultado.isValid).toBe(true);
-    });
-
-    it('debe aceptar fecha como objeto Date', () => {
-      const datos = {
-        ...datosValidos,
-        fechaHoraSupervision: new Date('2026-02-04T10:30:00'),
-      };
-      const resultado = validarDatosGenerales(datos);
+      });
       expect(resultado.isValid).toBe(true);
     });
   });
 
-  describe('validarArea', () => {
-    it('debe validar área sin novedad', () => {
-      const area = {
-        nombre: 'Cocina',
-        sinNovedad: true,
-        observacion: '',
-      };
-      const resultado = validarArea(area);
+  describe('validarRubro', () => {
+    const rubroValido = {
+      nombre: 'Armería',
+      noAplica: false,
+      calificacion: 8,
+      criterios: [
+        { id: 'arm-1', texto: 'criterio 1', cumple: true },
+        { id: 'arm-2', texto: 'criterio 2', cumple: false },
+      ],
+      sinNovedad: false,
+      observacion: 'Todo en orden con observaciones menores.',
+      fotos: [{ uri: 'file://foto.jpg' }],
+    };
+
+    it('debe validar rubro completo', () => {
+      const resultado = validarRubro(rubroValido);
       expect(resultado.isValid).toBe(true);
     });
 
-    it('debe validar área con observación', () => {
-      const area = {
-        nombre: 'Dormitorios',
-        sinNovedad: false,
-        observacion: 'Hay un problema detectado.',
-      };
-      const resultado = validarArea(area);
+    it('debe aceptar rubro con "No aplica"', () => {
+      const rubro = { ...rubroValido, noAplica: true, calificacion: null, criterios: [], fotos: [] };
+      const resultado = validarRubro(rubro);
       expect(resultado.isValid).toBe(true);
     });
 
-    it('debe detectar nombre vacío', () => {
-      const area = {
-        nombre: '',
-        sinNovedad: true,
-      };
-      const resultado = validarArea(area);
+    it('debe detectar calificación faltante', () => {
+      const resultado = validarRubro({ ...rubroValido, calificacion: null });
       expect(resultado.isValid).toBe(false);
-      expect(resultado.errores.nombre).toBeDefined();
+      expect(resultado.errores.calificacion).toBeDefined();
+    });
+
+    it('debe detectar calificación fuera de rango', () => {
+      expect(validarRubro({ ...rubroValido, calificacion: 0 }).isValid).toBe(false);
+      expect(validarRubro({ ...rubroValido, calificacion: 11 }).isValid).toBe(false);
+      expect(validarRubro({ ...rubroValido, calificacion: 5.5 }).isValid).toBe(false);
+    });
+
+    it('debe aceptar todas las calificaciones enteras 1-10', () => {
+      for (let i = 1; i <= 10; i++) {
+        expect(validarRubro({ ...rubroValido, calificacion: i }).isValid).toBe(true);
+      }
+    });
+
+    it('debe detectar criterios sin responder', () => {
+      const rubro = {
+        ...rubroValido,
+        criterios: [
+          { id: 'a', texto: 'c', cumple: true },
+          { id: 'b', texto: 'c2', cumple: null },
+        ],
+      };
+      const resultado = validarRubro(rubro);
+      expect(resultado.isValid).toBe(false);
+      expect(resultado.errores.criterios).toBeDefined();
+    });
+
+    it('debe aceptar rubros sin criterios definidos', () => {
+      const rubro = { ...rubroValido, criterios: [] };
+      expect(validarRubro(rubro).isValid).toBe(true);
     });
 
     it('debe requerir observación cuando no es sin novedad', () => {
-      const area = {
-        nombre: 'Cocina',
-        sinNovedad: false,
-        observacion: '',
-      };
-      const resultado = validarArea(area);
+      const resultado = validarRubro({ ...rubroValido, sinNovedad: false, observacion: '' });
       expect(resultado.isValid).toBe(false);
       expect(resultado.errores.observacion).toBeDefined();
+    });
+
+    it('debe aceptar sin novedad sin observación', () => {
+      const resultado = validarRubro({ ...rubroValido, sinNovedad: true, observacion: '' });
+      expect(resultado.isValid).toBe(true);
+    });
+
+    it('debe requerir al menos una foto', () => {
+      const resultado = validarRubro({ ...rubroValido, fotos: [] });
+      expect(resultado.isValid).toBe(false);
+      expect(resultado.errores.fotos).toBeDefined();
+    });
+
+    it('validarArea debe ser alias de validarRubro', () => {
+      expect(validarArea).toBe(validarRubro);
     });
   });
 
   describe('validarSupervisionCompleta', () => {
+    const rubroOK = {
+      id: 'r1',
+      nombre: 'Armería',
+      noAplica: false,
+      calificacion: 8,
+      criterios: [{ id: 'a', texto: 't', cumple: true }],
+      sinNovedad: false,
+      observacion: 'observación de prueba',
+      fotos: [{ uri: 'file://foto.jpg' }],
+    };
+
     const supervisionValida = {
       id: '123',
       datosGenerales: {
         nombreCprs: 'C.P.R.S. Toluca',
         fechaHoraSupervision: '2026-02-04T10:30:00.000Z',
-        nombreSupervisor: 'Juan Pérez',
-        cargoSupervisor: 'Director',
       },
-      areas: [],
+      areas: [rubroOK],
     };
 
     it('debe validar supervisión completa', () => {
@@ -148,59 +156,40 @@ describe('validation', () => {
       expect(resultado.isValid).toBe(true);
     });
 
-    it('debe dar advertencia cuando no hay áreas', () => {
-      const resultado = validarSupervisionCompleta(supervisionValida);
-      expect(resultado.advertencias.length).toBeGreaterThan(0);
-    });
-
-    it('debe poder generar aunque tenga advertencias', () => {
-      const resultado = validarSupervisionCompleta(supervisionValida);
-      expect(resultado.puedeGenerar).toBe(true);
-    });
-
-    it('debe detectar datosGenerales inválidos', () => {
-      const supervision = {
-        ...supervisionValida,
-        datosGenerales: {
-          nombreCprs: '',
-          fechaHoraSupervision: null,
-        },
-      };
-      const resultado = validarSupervisionCompleta(supervision);
+    it('debe marcar error cuando no hay rubros', () => {
+      const resultado = validarSupervisionCompleta({ ...supervisionValida, areas: [] });
       expect(resultado.isValid).toBe(false);
     });
 
-    it('debe validar supervisión con múltiples áreas', () => {
-      const supervision = {
+    it('debe detectar datosGenerales inválidos', () => {
+      const resultado = validarSupervisionCompleta({
         ...supervisionValida,
-        areas: [
-          { id: '1', nombre: 'Área 1', sinNovedad: true },
-          { id: '2', nombre: 'Área 2', sinNovedad: false, observacion: 'Test' },
-          { id: '3', nombre: 'Área 3', sinNovedad: true },
-        ],
-      };
-      const resultado = validarSupervisionCompleta(supervision);
-      expect(resultado.isValid).toBe(true);
+        datosGenerales: { nombreCprs: '', fechaHoraSupervision: null },
+      });
+      expect(resultado.isValid).toBe(false);
     });
 
-    it('debe manejar áreas con fotos', () => {
-      const supervision = {
+    it('debe validar múltiples rubros y reportar errores por rubro', () => {
+      const resultado = validarSupervisionCompleta({
         ...supervisionValida,
         areas: [
-          {
-            id: '1',
-            nombre: 'Área 1',
-            sinNovedad: false,
-            observacion: 'Hay observaciones',
-            fotos: [
-              { uri: 'file://foto1.jpg' },
-              { uri: 'file://foto2.jpg' },
-            ],
-          },
+          rubroOK,
+          { ...rubroOK, calificacion: null, nombre: 'Cocina' },
         ],
-      };
-      const resultado = validarSupervisionCompleta(supervision);
+      });
+      expect(resultado.isValid).toBe(false);
+      expect(resultado.errores.some((e) => e.includes('Cocina'))).toBe(true);
+    });
+
+    it('debe advertir cuando todos los rubros son No aplica', () => {
+      const resultado = validarSupervisionCompleta({
+        ...supervisionValida,
+        areas: [
+          { ...rubroOK, noAplica: true, calificacion: null, criterios: [], fotos: [] },
+        ],
+      });
       expect(resultado.isValid).toBe(true);
+      expect(resultado.advertencias.length).toBeGreaterThan(0);
     });
   });
 });

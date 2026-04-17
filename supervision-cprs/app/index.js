@@ -14,22 +14,45 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSupervision } from '../src/context/SupervisionContext';
+import { useAuth } from '../src/context/AuthContext';
+import { useSync } from '../src/context/SyncProvider';
 import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
 import { formatearFechaDisplay } from '../src/utils/dateUtils';
+import { supabaseEstaConfigurado } from '../src/config/supabase';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { 
-    supervisiones, 
-    cargarSupervisiones, 
-    nuevaSupervision, 
+  const {
+    supervisiones,
+    cargarSupervisiones,
+    nuevaSupervision,
     eliminarSupervision,
-    cargando 
+    cargando
   } = useSupervision();
-  
+  const { usuario, cerrarSesion } = useAuth();
+  const { online, pendientes, drenarCola } = useSync();
+
   const [refreshing, setRefreshing] = useState(false);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Seguro que quieres cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: async () => {
+            await cerrarSesion();
+            router.replace('/login');
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     cargarSupervisiones();
@@ -200,11 +223,36 @@ export default function HomeScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>CPRS</Text>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>CPRS</Text>
+            </View>
+            {supabaseEstaConfigurado() && usuario && (
+              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                <Text style={styles.logoutBtnText}>Salir  ⎋</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.headerTitle}>Supervisión</Text>
-          <Text style={styles.headerSubtitle}>Sistema de gestión de supervisiones</Text>
+          <Text style={styles.headerSubtitle}>
+            {usuario?.email ? usuario.email : 'Sistema de gestión de supervisiones'}
+          </Text>
+
+          {supabaseEstaConfigurado() && (
+            <View style={styles.syncRow}>
+              <View style={[styles.syncDot, { backgroundColor: online ? '#7CB342' : '#F9A825' }]} />
+              <Text style={styles.syncText}>
+                {online ? 'En línea' : 'Sin conexión'}
+              </Text>
+              {pendientes > 0 && (
+                <TouchableOpacity style={styles.syncPending} onPress={drenarCola}>
+                  <Text style={styles.syncPendingText}>
+                    ⏳ {pendientes} pendiente{pendientes !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
         
         {/* Decoración */}
@@ -272,13 +320,29 @@ const styles = StyleSheet.create({
   headerContent: {
     zIndex: 2,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  logoutBtn: {
+    backgroundColor: COLORS.white + '25',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  logoutBtnText: {
+    color: COLORS.white,
+    fontSize: SIZES.sm,
+    fontWeight: '700',
+  },
   headerBadge: {
     backgroundColor: COLORS.secondary,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 20,
-    marginBottom: 12,
   },
   headerBadgeText: {
     color: COLORS.primaryDark,
@@ -298,6 +362,37 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginTop: 6,
     fontWeight: '400',
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  syncDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  syncText: {
+    color: COLORS.white,
+    fontSize: SIZES.xs,
+    fontWeight: '700',
+    marginRight: 4,
+  },
+  syncPending: {
+    backgroundColor: COLORS.warning + '50',
+    borderWidth: 1,
+    borderColor: COLORS.warning,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  syncPendingText: {
+    color: COLORS.white,
+    fontSize: SIZES.xs,
+    fontWeight: '700',
   },
   headerDecoration: {
     position: 'absolute',

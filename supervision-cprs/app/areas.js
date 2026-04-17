@@ -11,17 +11,16 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSupervision } from '../src/context/SupervisionContext';
-import { Button, AreaCard } from '../src/components';
+import { Button, RubroCard } from '../src/components';
 import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
+import { calcularPromedioGeneral, colorPorCalificacion } from '../src/constants/data';
 
 export default function AreasScreen() {
   const router = useRouter();
-  const { 
-    supervisionActual, 
-    agregarArea,
-    actualizarArea,
-    eliminarArea,
-    reordenarAreas,
+  const {
+    supervisionActual,
+    actualizarRubro,
+    actualizarCriterio,
     agregarFoto,
     eliminarFoto,
     guardarSupervision,
@@ -30,41 +29,7 @@ export default function AreasScreen() {
 
   const [guardando, setGuardando] = useState(false);
 
-  const areas = supervisionActual?.areas || [];
-
-  const handleAgregarArea = () => {
-    agregarArea();
-  };
-
-  const handleActualizarArea = (id, datos) => {
-    actualizarArea(id, datos);
-  };
-
-  const handleEliminarArea = (id) => {
-    eliminarArea(id);
-  };
-
-  const handleMoverArriba = (index) => {
-    if (index === 0) return;
-    const nuevasAreas = [...areas];
-    [nuevasAreas[index - 1], nuevasAreas[index]] = [nuevasAreas[index], nuevasAreas[index - 1]];
-    reordenarAreas(nuevasAreas);
-  };
-
-  const handleMoverAbajo = (index) => {
-    if (index === areas.length - 1) return;
-    const nuevasAreas = [...areas];
-    [nuevasAreas[index], nuevasAreas[index + 1]] = [nuevasAreas[index + 1], nuevasAreas[index]];
-    reordenarAreas(nuevasAreas);
-  };
-
-  const handleAgregarFoto = (areaId, foto) => {
-    agregarFoto(areaId, foto);
-  };
-
-  const handleEliminarFoto = (areaId, fotoIndex) => {
-    eliminarFoto(areaId, fotoIndex);
-  };
+  const rubros = supervisionActual?.areas || [];
 
   const handleGuardar = async () => {
     setGuardando(true);
@@ -96,9 +61,18 @@ export default function AreasScreen() {
     );
   }
 
+  // Métricas
+  const evaluados = rubros.filter(
+    (r) => !r.noAplica && typeof r.calificacion === 'number' && r.calificacion >= 1
+  );
+  const noAplicaCount = rubros.filter((r) => r.noAplica).length;
+  const totalFotos = rubros.reduce((acc, r) => acc + (r.fotos?.length || 0), 0);
+  const promedio = calcularPromedioGeneral(rubros);
+  const colorPromedio = colorPorCalificacion(Math.round(promedio));
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header con gradiente */}
+      {/* Header */}
       <LinearGradient
         colors={[COLORS.primaryDark, COLORS.primary]}
         start={{ x: 0, y: 0 }}
@@ -117,74 +91,53 @@ export default function AreasScreen() {
           <View style={styles.stepBadge}>
             <Text style={styles.stepBadgeText}>PASO 2 DE 4</Text>
           </View>
-          <Text style={styles.headerTitle}>Áreas y Evidencias</Text>
+          <Text style={styles.headerTitle}>Indicadores por Rubro</Text>
           <View style={styles.headerStats}>
             <View style={styles.statBadge}>
-              <Text style={styles.statBadgeText}>📍 {areas.length} área{areas.length !== 1 ? 's' : ''}</Text>
+              <Text style={styles.statBadgeText}>
+                ✅ {evaluados.length}/{rubros.length - noAplicaCount}
+              </Text>
             </View>
             <View style={styles.statBadge}>
-              <Text style={styles.statBadgeText}>📷 {areas.reduce((acc, a) => acc + (a.fotos?.length || 0), 0)} foto{areas.reduce((acc, a) => acc + (a.fotos?.length || 0), 0) !== 1 ? 's' : ''}</Text>
+              <Text style={styles.statBadgeText}>🚫 {noAplicaCount} N/A</Text>
+            </View>
+            <View style={styles.statBadge}>
+              <Text style={styles.statBadgeText}>📷 {totalFotos}</Text>
+            </View>
+            <View style={[styles.promedioBadge, { backgroundColor: colorPromedio }]}>
+              <Text style={styles.promedioBadgeText}>
+                PROM {promedio.toFixed(2)}
+              </Text>
             </View>
           </View>
         </View>
       </LinearGradient>
 
-      {/* Contenido */}
-      <ScrollView 
+      {/* Info */}
+      <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {areas.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <Text style={styles.emptyIcon}>📍</Text>
-            </View>
-            <Text style={styles.emptyTitle}>Sin áreas registradas</Text>
-            <Text style={styles.emptyText}>
-              Agrega las áreas que deseas documentar en la supervisión.
-              Para cada área puedes agregar observaciones y fotografías.
-            </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={handleAgregarArea}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                style={styles.emptyButtonGradient}
-              >
-                <Text style={styles.emptyButtonText}>+ Agregar primera área</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoIcon}>💡</Text>
-              <Text style={styles.infoText}>
-                Reordena las áreas con ▲ ▼. Marca "Sin novedad" si no hay observaciones que reportar.
-              </Text>
-            </View>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoIcon}>💡</Text>
+          <Text style={styles.infoText}>
+            Evalúa los 15 rubros oficiales. Califica del 1 al 10 (obligatorio responder todos los
+            criterios). Si el C.P.R.S. no cuenta con algún rubro, marca "No aplica".
+          </Text>
+        </View>
 
-            {areas.map((area, index) => (
-              <AreaCard
-                key={area.id}
-                area={area}
-                index={index}
-                onUpdate={(datos) => handleActualizarArea(area.id, datos)}
-                onRemove={() => handleEliminarArea(area.id)}
-                onAddPhoto={(foto) => handleAgregarFoto(area.id, foto)}
-                onRemovePhoto={(fotoIndex) => handleEliminarFoto(area.id, fotoIndex)}
-                canMoveUp={index > 0}
-                canMoveDown={index < areas.length - 1}
-                onMoveUp={() => handleMoverArriba(index)}
-                onMoveDown={() => handleMoverAbajo(index)}
-              />
-            ))}
-
-            <TouchableOpacity style={styles.addButton} onPress={handleAgregarArea}>
-              <Text style={styles.addButtonIcon}>+</Text>
-              <Text style={styles.addButtonText}>Agregar otra área</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {rubros.map((rubro, index) => (
+          <RubroCard
+            key={rubro.id}
+            rubro={rubro}
+            index={index}
+            onUpdate={(datos) => actualizarRubro(rubro.id, datos)}
+            onUpdateCriterio={actualizarCriterio}
+            onAddPhoto={(foto) => agregarFoto(rubro.id, foto)}
+            onRemovePhoto={(fotoIndex) => eliminarFoto(rubro.id, fotoIndex)}
+          />
+        ))}
       </ScrollView>
 
       {/* Footer */}
@@ -195,7 +148,7 @@ export default function AreasScreen() {
           variant="outline"
           style={styles.footerButton}
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.continueButton}
           onPress={handleGuardar}
           disabled={guardando}
@@ -233,8 +186,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.lg,
     color: COLORS.textSecondary,
   },
-  
-  // Header
+
   header: {
     paddingTop: 16,
     paddingBottom: 24,
@@ -288,7 +240,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: COLORS.white,
     letterSpacing: -0.5,
@@ -296,21 +248,34 @@ const styles = StyleSheet.create({
   headerStats: {
     flexDirection: 'row',
     marginTop: 10,
-    gap: 10,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   statBadge: {
     backgroundColor: COLORS.white + '20',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 14,
   },
   statBadgeText: {
     color: COLORS.white,
-    fontSize: SIZES.sm,
-    fontWeight: '600',
+    fontSize: SIZES.xs,
+    fontWeight: '700',
   },
-  
-  // Content
+  promedioBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.white,
+  },
+  promedioBadgeText: {
+    color: COLORS.white,
+    fontSize: SIZES.xs,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+
   content: {
     flex: 1,
   },
@@ -318,8 +283,7 @@ const styles = StyleSheet.create({
     padding: SIZES.padding,
     paddingBottom: 120,
   },
-  
-  // Info box
+
   infoBox: {
     flexDirection: 'row',
     backgroundColor: COLORS.secondary + '15',
@@ -340,80 +304,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     lineHeight: 20,
   },
-  
-  // Empty state
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
-  emptyIconContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.primary + '10',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyIcon: {
-    fontSize: 48,
-  },
-  emptyTitle: {
-    fontSize: SIZES.xxl,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: SIZES.md,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 28,
-    lineHeight: 22,
-  },
-  emptyButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    ...SHADOWS.medium,
-  },
-  emptyButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-  },
-  emptyButtonText: {
-    color: COLORS.white,
-    fontSize: SIZES.base,
-    fontWeight: '700',
-  },
-  
-  // Add button
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    paddingVertical: 18,
-    marginTop: SIZES.margin,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: COLORS.primary + '40',
-    ...SHADOWS.small,
-  },
-  addButtonIcon: {
-    fontSize: 22,
-    color: COLORS.primary,
-    marginRight: 8,
-    fontWeight: '300',
-  },
-  addButtonText: {
-    fontSize: SIZES.base,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  
-  // Footer
+
   footer: {
     flexDirection: 'row',
     padding: SIZES.padding,

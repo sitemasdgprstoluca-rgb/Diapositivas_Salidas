@@ -4,13 +4,23 @@ import * as Sharing from 'expo-sharing';
 import { Asset } from 'expo-asset';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
-import { 
-  formatearFechaCompleta, 
-  formatearFechaDiaMes, 
+import {
+  formatearFechaCompleta,
+  formatearFechaDiaMes,
   formatearHora,
-  generarNombreArchivo 
+  generarNombreArchivo
 } from './dateUtils';
 import { buscarMapa } from './mapasIndex';
+import { calcularPromedioGeneral } from '../constants/data';
+
+// Colores para la escala 1-10 (formato hex sin #)
+const colorHexCalificacion = (cal) => {
+  if (cal == null) return '888888';
+  if (cal <= 4) return 'C62828'; // rojo
+  if (cal <= 6) return 'F9A825'; // amarillo
+  if (cal <= 8) return '7CB342'; // verde claro
+  return '2E7D32'; // verde fuerte
+};
 
 // Detectar si estamos en web
 const isWeb = Platform.OS === 'web';
@@ -178,14 +188,15 @@ const cargarAssetBase64 = async (assetModule) => {
 };
 
 /**
- * Genera la lista de lugares formateada
+ * Genera la lista de lugares supervisados (excluye rubros "No aplica").
+ * Usa nombre corto si está disponible para el listado del slide 2.
  */
 const generarListaLugares = (areas) => {
   if (!areas || areas.length === 0) return ['Sin lugares registrados'];
-  return areas.map(area => {
-    const nombre = area.nombre === 'Otro' && area.textoOtro ? area.textoOtro : area.nombre;
-    return nombre;
-  });
+  return areas
+    .filter((a) => !a.noAplica)
+    .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+    .map((area) => area.nombreCorto || area.nombre);
 };
 
 /**
@@ -469,24 +480,223 @@ export const generarPPTX = async (supervision) => {
       });
     }
 
-    // ==================== SLIDES DE ÁREAS CON FOTOS ====================
-    // Cada área tiene su propia diapositiva con su título y fotos
-    // Soporte para múltiples áreas y viñetas en observaciones
-    console.log('[PPTX] Procesando áreas...');
+    // ==================== SLIDE 3: TABLERO DE INDICADORES ====================
+    console.log('[PPTX] Construyendo tablero de indicadores...');
+    const rubros = supervision.areas || [];
+    const promedioGlobal = calcularPromedioGeneral(rubros);
+
+    if (rubros.length > 0) {
+      const slideTablero = pptx.addSlide();
+      if (bgGeneral) {
+        slideTablero.addImage({
+          data: `image/png;base64,${bgGeneral}`,
+          x: 0, y: 0, w: SLIDE_W, h: SLIDE_H,
+        });
+      }
+
+      slideTablero.addText(`INDICADORES DE MEDICIÓN — C.P.R.S. ${nombreCprs.toUpperCase()}`, {
+        x: TITLE_LEFT_MARGIN, y: 0.55, w: SLIDE_W - TITLE_LEFT_MARGIN - TITLE_RIGHT_MARGIN, h: 0.40,
+        fontSize: 15,
+        fontFace: 'Gotham',
+        color: COLORS.guinda,
+        bold: true,
+        italic: true,
+        align: 'center',
+      });
+
+      slideTablero.addText('Escala 1-10 (10 = valor más alto). N/A = el C.P.R.S. no cuenta con esa área.', {
+        x: LEFT_MARGIN, y: 0.98, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 0.28,
+        fontSize: 10,
+        fontFace: 'Gotham',
+        color: COLORS.negro,
+        italic: true,
+        align: 'center',
+      });
+
+      // Mapa del municipio
+      if (mapaBase64) {
+        slideTablero.addImage({
+          data: `image/png;base64,${mapaBase64}`,
+          x: SLIDE_W - 1.8, y: 0.3, w: 1.5, h: 1.4,
+        });
+      }
+
+      // Tabla de rubros (dos columnas para aprovechar espacio)
+      const rubrosOrdenados = [...rubros].sort((a, b) => (a.orden || 0) - (b.orden || 0));
+      const mitad = Math.ceil(rubrosOrdenados.length / 2);
+      const colA = rubrosOrdenados.slice(0, mitad);
+      const colB = rubrosOrdenados.slice(mitad);
+
+      const yInicioTabla = 1.40;
+      const alturaFila = 0.38;
+      const anchoTabla = (SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN - 0.4) / 2;
+      const xColA = LEFT_MARGIN;
+      const xColB = LEFT_MARGIN + anchoTabla + 0.4;
+
+      const dibujarFila = (slide, rubro, x, y, w) => {
+        const cal = rubro.noAplica ? 'N/A' : (rubro.calificacion != null ? String(rubro.calificacion) : '—');
+        const colorBadge = rubro.noAplica ? '888888' : colorHexCalificacion(rubro.calificacion);
+
+        // Fondo de fila
+        slide.addShape('rect', {
+          x, y, w, h: alturaFila - 0.04,
+          fill: { color: COLORS.blanco },
+          line: { color: 'CCCCCC', width: 0.5 },
+        });
+
+        // Número + nombre
+        const nombreCorto = rubro.nombre.length > 55 ? rubro.nombre.substring(0, 52) + '...' : rubro.nombre;
+        slide.addText(`${rubro.orden}. ${nombreCorto}`, {
+          x: x + 0.08, y, w: w - 0.75, h: alturaFila - 0.04,
+          fontSize: 9,
+          fontFace: 'Gotham',
+          color: COLORS.negro,
+          valign: 'middle',
+        });
+
+        // Badge de calificación
+        slide.addShape('ellipse', {
+          x: x + w - 0.58, y: y + 0.04, w: 0.52, h: alturaFila - 0.12,
+          fill: { color: colorBadge },
+          line: { color: colorBadge, width: 0 },
+        });
+        slide.addText(cal, {
+          x: x + w - 0.58, y: y + 0.04, w: 0.52, h: alturaFila - 0.12,
+          fontSize: rubro.noAplica ? 9 : 11,
+          fontFace: 'Gotham',
+          color: COLORS.blanco,
+          bold: true,
+          align: 'center',
+          valign: 'middle',
+        });
+      };
+
+      colA.forEach((rubro, i) => {
+        dibujarFila(slideTablero, rubro, xColA, yInicioTabla + i * alturaFila, anchoTabla);
+      });
+      colB.forEach((rubro, i) => {
+        dibujarFila(slideTablero, rubro, xColB, yInicioTabla + i * alturaFila, anchoTabla);
+      });
+
+      // Cuadro de PROMEDIO
+      const yPromedio = 6.55;
+      const colorProm = colorHexCalificacion(Math.round(promedioGlobal));
+      slideTablero.addShape('rect', {
+        x: LEFT_MARGIN, y: yPromedio, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 0.60,
+        fill: { color: colorProm },
+        line: { color: colorProm, width: 0 },
+      });
+      slideTablero.addText('PROMEDIO C.P.R.S.', {
+        x: LEFT_MARGIN + 0.2, y: yPromedio, w: 3.5, h: 0.60,
+        fontSize: 14,
+        fontFace: 'Gotham',
+        color: COLORS.blanco,
+        bold: true,
+        valign: 'middle',
+      });
+      slideTablero.addText(promedioGlobal.toFixed(2), {
+        x: SLIDE_W - RIGHT_MARGIN - 1.6, y: yPromedio, w: 1.4, h: 0.60,
+        fontSize: 24,
+        fontFace: 'Gotham',
+        color: COLORS.blanco,
+        bold: true,
+        align: 'right',
+        valign: 'middle',
+      });
+    }
+
+    // ==================== SLIDES DE RUBROS CON FOTOS ====================
+    // Cada rubro tiene su propia diapositiva con título, badge de calificación,
+    // checklist de criterios, observación y fotos.
+    // Rubros con noAplica generan slide informativo sin fotos.
+    console.log('[PPTX] Procesando rubros...');
     if (supervision.areas && supervision.areas.length > 0) {
+      const rubrosOrdenadosParaSlides = [...supervision.areas].sort(
+        (a, b) => (a.orden || 0) - (b.orden || 0)
+      );
       let areaIndex = 0;
-      for (const area of supervision.areas) {
+      for (const area of rubrosOrdenadosParaSlides) {
         areaIndex++;
-        console.log(`[PPTX] Procesando área ${areaIndex}/${supervision.areas.length}: ${area.nombre}`);
-        
-        const nombreArea = area.nombre === 'Otro' && area.textoOtro ? area.textoOtro : area.nombre;
-        
-        // Procesar observación - soporte simple para viñetas (líneas separadas por Enter)
+        console.log(`[PPTX] Procesando rubro ${areaIndex}/${rubrosOrdenadosParaSlides.length}: ${area.nombre}`);
+
+        const nombreArea = area.nombre;
+
+        // =============== SLIDE PARA RUBRO "NO APLICA" ===============
+        if (area.noAplica) {
+          const slideNA = pptx.addSlide();
+          if (bgGeneral) {
+            slideNA.addImage({
+              data: `image/png;base64,${bgGeneral}`,
+              x: 0, y: 0, w: SLIDE_W, h: SLIDE_H,
+            });
+          }
+
+          slideNA.addText(`RUBRO: ${nombreArea.toUpperCase()}`, {
+            x: TITLE_LEFT_MARGIN, y: 0.60, w: SLIDE_W - TITLE_LEFT_MARGIN - TITLE_RIGHT_MARGIN, h: 0.40,
+            fontSize: 16,
+            fontFace: 'Gotham',
+            color: COLORS.guinda,
+            bold: true,
+            italic: true,
+            align: 'center',
+          });
+
+          if (mapaBase64) {
+            slideNA.addImage({
+              data: `image/png;base64,${mapaBase64}`,
+              x: SLIDE_W - 1.8, y: 0.3, w: 1.5, h: 1.4,
+            });
+          }
+
+          // Badge N/A
+          slideNA.addShape('ellipse', {
+            x: SLIDE_W / 2 - 1.0, y: 2.2, w: 2.0, h: 2.0,
+            fill: { color: '888888' },
+            line: { color: '888888', width: 0 },
+          });
+          slideNA.addText('N/A', {
+            x: SLIDE_W / 2 - 1.0, y: 2.2, w: 2.0, h: 2.0,
+            fontSize: 56,
+            fontFace: 'Gotham',
+            color: COLORS.blanco,
+            bold: true,
+            align: 'center',
+            valign: 'middle',
+          });
+
+          slideNA.addText('EL C.P.R.S. NO CUENTA CON ESTA ÁREA', {
+            x: LEFT_MARGIN, y: 4.6, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 0.6,
+            fontSize: 20,
+            fontFace: 'Gotham',
+            color: COLORS.guinda,
+            bold: true,
+            italic: true,
+            align: 'center',
+          });
+
+          slideNA.addText(
+            'Este rubro no se contabiliza en el promedio general de la supervisión, al no existir infraestructura o servicio correspondiente dentro del Centro Penitenciario.',
+            {
+              x: LEFT_MARGIN, y: 5.3, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 1.0,
+              fontSize: 12,
+              fontFace: 'Gotham',
+              color: COLORS.negro,
+              align: 'center',
+              valign: 'top',
+              italic: true,
+            }
+          );
+          continue; // siguiente rubro
+        }
+
+        // Procesar observación - soporte simple para viñetas
         const observacionTexto = area.sinNovedad ? 'Sin novedad.' : (area.observacion || 'Sin observación registrada.');
-        // Dividir por saltos de línea para crear viñetas
         const lineasObservacion = observacionTexto.split(/[\n\r]+/).map(l => l.trim()).filter(l => l.length > 0);
-        
+
         const fotosArea = area.fotos || [];
+        const criterios = area.criterios || [];
+        const calificacion = area.calificacion;
+        const colorCalHex = colorHexCalificacion(calificacion);
         
         // Sistema dinámico para múltiples slides (4 fotos por slide)
         const FOTOS_POR_SLIDE = 4;
@@ -504,9 +714,9 @@ export const generarPPTX = async (supervision) => {
           });
         }
         
-        // Título con el nombre del área - con márgenes ajustados
-        slideArea.addText(`ÁREA: ${nombreArea.toUpperCase()}`, {
-          x: TITLE_LEFT_MARGIN, y: 0.60, w: SLIDE_W - TITLE_LEFT_MARGIN - TITLE_RIGHT_MARGIN, h: 0.40,
+        // Título con el nombre del rubro
+        slideArea.addText(`RUBRO: ${nombreArea.toUpperCase()}`, {
+          x: TITLE_LEFT_MARGIN, y: 0.60, w: SLIDE_W - TITLE_LEFT_MARGIN - TITLE_RIGHT_MARGIN - 1.2, h: 0.40,
           fontSize: 16,
           fontFace: 'Gotham',
           color: COLORS.guinda,
@@ -514,47 +724,110 @@ export const generarPPTX = async (supervision) => {
           italic: true,
           align: 'center',
         });
-        
-        // Texto de protocolo
+
+        // Badge de calificación (esquina superior derecha del título)
+        if (calificacion != null) {
+          slideArea.addShape('ellipse', {
+            x: SLIDE_W - 2.0, y: 0.50, w: 0.7, h: 0.7,
+            fill: { color: colorCalHex },
+            line: { color: COLORS.blanco, width: 2 },
+          });
+          slideArea.addText(String(calificacion), {
+            x: SLIDE_W - 2.0, y: 0.50, w: 0.7, h: 0.7,
+            fontSize: 22,
+            fontFace: 'Gotham',
+            color: COLORS.blanco,
+            bold: true,
+            align: 'center',
+            valign: 'middle',
+          });
+        }
+
+        // Texto de protocolo (más compacto para dejar espacio al checklist)
         slideArea.addText([
           { text: 'Se realizó la revisión conforme al ', options: { bold: false } },
           { text: 'Protocolo y Procedimiento Sistemático de Operación, ', options: { bold: true, italic: true } },
           { text: 'respetando en todo momento los ', options: { bold: false } },
           { text: 'Derechos Humanos de las Personas Privadas de la Libertad.', options: { bold: true, italic: true } },
         ], {
-          x: LEFT_MARGIN, y: 1.05 + TOP_MARGIN, w: SLIDE_W - LEFT_MARGIN - 0.5, h: 0.45,
-          fontSize: 11, 
-          fontFace: 'Gotham', 
+          x: LEFT_MARGIN, y: 1.05 + TOP_MARGIN, w: SLIDE_W - LEFT_MARGIN - 0.5, h: 0.40,
+          fontSize: 10,
+          fontFace: 'Gotham',
           color: COLORS.negro,
           align: 'justify',
         });
-        
-        // Cuadro de observación para esta área - soporte para múltiples viñetas
+
+        // Cuadro de CRITERIOS (si el rubro los tiene)
+        let yActual = 1.50 + TOP_MARGIN;
+        let alturaCriterios = 0;
+        if (criterios.length > 0) {
+          const alturaPorCriterio = 0.22;
+          alturaCriterios = 0.28 + criterios.length * alturaPorCriterio;
+
+          slideArea.addShape('rect', {
+            x: LEFT_MARGIN, y: yActual, w: SLIDE_W - LEFT_MARGIN - 0.6, h: alturaCriterios,
+            fill: { color: 'F5F5F5' },
+            line: { color: COLORS.dorado, width: 1 },
+          });
+
+          slideArea.addText('CRITERIOS EVALUADOS:', {
+            x: LEFT_MARGIN + 0.1, y: yActual + 0.02, w: SLIDE_W - LEFT_MARGIN - 0.8, h: 0.24,
+            fontSize: 9,
+            fontFace: 'Gotham',
+            color: COLORS.guinda,
+            bold: true,
+          });
+
+          criterios.forEach((crit, idx) => {
+            const yCrit = yActual + 0.28 + idx * alturaPorCriterio;
+            const simbolo = crit.cumple === true ? '✔' : crit.cumple === false ? '✘' : '—';
+            const colorSim = crit.cumple === true ? '2E7D32' : crit.cumple === false ? 'C62828' : '888888';
+
+            slideArea.addText(simbolo, {
+              x: LEFT_MARGIN + 0.08, y: yCrit, w: 0.25, h: 0.20,
+              fontSize: 12,
+              fontFace: 'Gotham',
+              color: colorSim,
+              bold: true,
+              valign: 'middle',
+            });
+            slideArea.addText(`${idx + 1}. ${crit.texto}`, {
+              x: LEFT_MARGIN + 0.35, y: yCrit, w: SLIDE_W - LEFT_MARGIN - 1.0, h: 0.20,
+              fontSize: 8.5,
+              fontFace: 'Gotham',
+              color: COLORS.negro,
+              valign: 'middle',
+            });
+          });
+
+          yActual += alturaCriterios + 0.10;
+        }
+
+        // Cuadro de OBSERVACIÓN
         const numViñetas = lineasObservacion.length;
-        const alturaBaseObs = 0.55;
-        const alturaPorViñeta = 0.18;
-        const alturaObservacion = Math.min(1.2, alturaBaseObs + (numViñetas - 1) * alturaPorViñeta);
-        
+        const alturaBaseObs = 0.50;
+        const alturaPorViñeta = 0.16;
+        const alturaObservacion = Math.min(1.1, alturaBaseObs + (numViñetas - 1) * alturaPorViñeta);
+
         slideArea.addShape('rect', {
-          x: LEFT_MARGIN, y: 1.55 + TOP_MARGIN, w: SLIDE_W - LEFT_MARGIN - 0.6, h: alturaObservacion,
+          x: LEFT_MARGIN, y: yActual, w: SLIDE_W - LEFT_MARGIN - 0.6, h: alturaObservacion,
           fill: { color: COLORS.blanco },
           line: { color: COLORS.guinda, width: 1.5 },
         });
-        
-        // Texto de observación con viñetas
+
         const textoObservacion = lineasObservacion.map(v => `• ${v}`).join('\n');
         slideArea.addText(textoObservacion, {
-          x: LEFT_MARGIN + 0.1, y: 1.58 + TOP_MARGIN, w: SLIDE_W - LEFT_MARGIN - 0.8, h: alturaObservacion - 0.06,
-          fontSize: 10, 
-          fontFace: 'Gotham', 
-          color: COLORS.negro, 
+          x: LEFT_MARGIN + 0.1, y: yActual + 0.03, w: SLIDE_W - LEFT_MARGIN - 0.8, h: alturaObservacion - 0.06,
+          fontSize: 9.5,
+          fontFace: 'Gotham',
+          color: COLORS.negro,
           valign: 'top',
         });
-        
-        // Área disponible para fotos - ajustada dinámicamente según altura de observación
-        const yFotos = 1.55 + TOP_MARGIN + alturaObservacion + 0.15;
+
+        // Área disponible para fotos
+        const yFotos = yActual + alturaObservacion + 0.12;
         const areaDisponibleW = SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN - 1.0;
-        const areaDisponibleH = 4.5;
+        const areaDisponibleH = Math.max(2.5, SLIDE_H - yFotos - 0.5);
         const gap = 0.25;
         
         // Función para agregar foto (sin contorno de color)
@@ -674,9 +947,9 @@ export const generarPPTX = async (supervision) => {
             }
             
             // Título continuación - indicar número de slide si hay más de uno extra
-            const textoTitulo = slidesExtras > 1 
-              ? `ÁREA: ${nombreArea.toUpperCase()} (continuación ${slideNum + 1}/${slidesExtras})`
-              : `ÁREA: ${nombreArea.toUpperCase()} (continuación)`;
+            const textoTitulo = slidesExtras > 1
+              ? `RUBRO: ${nombreArea.toUpperCase()} (continuación ${slideNum + 1}/${slidesExtras})`
+              : `RUBRO: ${nombreArea.toUpperCase()} (continuación)`;
             
             slideExtra.addText(textoTitulo, {
               x: TITLE_LEFT_MARGIN, y: 0.60, w: SLIDE_W - TITLE_LEFT_MARGIN - TITLE_RIGHT_MARGIN, h: 0.40,
@@ -711,6 +984,128 @@ export const generarPPTX = async (supervision) => {
           }
         }
       }
+    }
+
+    // ==================== SLIDE: RESUMEN EJECUTIVO ====================
+    if (rubros.length > 0) {
+      const slideResumen = pptx.addSlide();
+      if (bgGeneral) {
+        slideResumen.addImage({
+          data: `image/png;base64,${bgGeneral}`,
+          x: 0, y: 0, w: SLIDE_W, h: SLIDE_H,
+        });
+      }
+
+      slideResumen.addText('RESUMEN EJECUTIVO', {
+        x: TITLE_LEFT_MARGIN, y: 0.55, w: SLIDE_W - TITLE_LEFT_MARGIN - TITLE_RIGHT_MARGIN, h: 0.40,
+        fontSize: 18,
+        fontFace: 'Gotham',
+        color: COLORS.guinda,
+        bold: true,
+        italic: true,
+        align: 'center',
+      });
+
+      if (mapaBase64) {
+        slideResumen.addImage({
+          data: `image/png;base64,${mapaBase64}`,
+          x: SLIDE_W - 1.8, y: 0.3, w: 1.5, h: 1.4,
+        });
+      }
+
+      const evaluados = rubros.filter(
+        (r) => !r.noAplica && typeof r.calificacion === 'number' && r.calificacion >= 1
+      );
+      const ordenadosDesc = [...evaluados].sort((a, b) => b.calificacion - a.calificacion);
+      const top3 = ordenadosDesc.slice(0, 3);
+      const oportunidades = evaluados.filter((r) => r.calificacion <= 5);
+      const noAplican = rubros.filter((r) => r.noAplica);
+
+      // Columna izquierda: Mejor evaluados
+      slideResumen.addText('MEJOR EVALUADOS', {
+        x: LEFT_MARGIN, y: 1.4, w: 4.5, h: 0.35,
+        fontSize: 12, fontFace: 'Gotham', color: COLORS.guinda, bold: true,
+      });
+      top3.forEach((r, i) => {
+        const y = 1.8 + i * 0.42;
+        slideResumen.addShape('ellipse', {
+          x: LEFT_MARGIN, y, w: 0.36, h: 0.36,
+          fill: { color: colorHexCalificacion(r.calificacion) },
+          line: { color: colorHexCalificacion(r.calificacion), width: 0 },
+        });
+        slideResumen.addText(String(r.calificacion), {
+          x: LEFT_MARGIN, y, w: 0.36, h: 0.36,
+          fontSize: 12, fontFace: 'Gotham', color: COLORS.blanco, bold: true,
+          align: 'center', valign: 'middle',
+        });
+        slideResumen.addText(r.nombre, {
+          x: LEFT_MARGIN + 0.45, y, w: 4.0, h: 0.36,
+          fontSize: 10, fontFace: 'Gotham', color: COLORS.negro, valign: 'middle',
+        });
+      });
+
+      // Columna derecha: Áreas de oportunidad
+      slideResumen.addText('ÁREAS DE OPORTUNIDAD (≤5)', {
+        x: LEFT_MARGIN + 5.5, y: 1.4, w: 5.5, h: 0.35,
+        fontSize: 12, fontFace: 'Gotham', color: COLORS.guinda, bold: true,
+      });
+      if (oportunidades.length === 0) {
+        slideResumen.addText('Sin áreas de oportunidad. Todas las calificaciones son mayores a 5.', {
+          x: LEFT_MARGIN + 5.5, y: 1.8, w: 5.5, h: 0.6,
+          fontSize: 10, fontFace: 'Gotham', color: COLORS.negro, italic: true,
+        });
+      } else {
+        oportunidades.slice(0, 5).forEach((r, i) => {
+          const y = 1.8 + i * 0.42;
+          slideResumen.addShape('ellipse', {
+            x: LEFT_MARGIN + 5.5, y, w: 0.36, h: 0.36,
+            fill: { color: colorHexCalificacion(r.calificacion) },
+            line: { color: colorHexCalificacion(r.calificacion), width: 0 },
+          });
+          slideResumen.addText(String(r.calificacion), {
+            x: LEFT_MARGIN + 5.5, y, w: 0.36, h: 0.36,
+            fontSize: 12, fontFace: 'Gotham', color: COLORS.blanco, bold: true,
+            align: 'center', valign: 'middle',
+          });
+          slideResumen.addText(r.nombre, {
+            x: LEFT_MARGIN + 5.95, y, w: 4.5, h: 0.36,
+            fontSize: 10, fontFace: 'Gotham', color: COLORS.negro, valign: 'middle',
+          });
+        });
+      }
+
+      // Rubros No Aplica
+      if (noAplican.length > 0) {
+        slideResumen.addText('RUBROS NO APLICABLES AL C.P.R.S.', {
+          x: LEFT_MARGIN, y: 4.4, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 0.35,
+          fontSize: 12, fontFace: 'Gotham', color: COLORS.guinda, bold: true,
+        });
+        const listaNA = noAplican.map((r) => `• ${r.nombre}`).join('\n');
+        slideResumen.addText(listaNA, {
+          x: LEFT_MARGIN, y: 4.75, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 1.3,
+          fontSize: 10, fontFace: 'Gotham', color: COLORS.negro, valign: 'top',
+        });
+      }
+
+      // Cuadro de promedio final
+      const colorProm2 = colorHexCalificacion(Math.round(promedioGlobal));
+      slideResumen.addShape('rect', {
+        x: LEFT_MARGIN, y: 6.55, w: SLIDE_W - LEFT_MARGIN - RIGHT_MARGIN, h: 0.60,
+        fill: { color: colorProm2 },
+        line: { color: colorProm2, width: 0 },
+      });
+      slideResumen.addText('PROMEDIO GENERAL C.P.R.S.', {
+        x: LEFT_MARGIN + 0.2, y: 6.55, w: 5.5, h: 0.60,
+        fontSize: 14, fontFace: 'Gotham', color: COLORS.blanco, bold: true, valign: 'middle',
+      });
+      slideResumen.addText(
+        `${promedioGlobal.toFixed(2)} / 10`,
+        {
+          x: SLIDE_W - RIGHT_MARGIN - 2.2, y: 6.55, w: 2.0, h: 0.60,
+          fontSize: 22, fontFace: 'Gotham', color: COLORS.blanco, bold: true,
+          align: 'right', valign: 'middle',
+        }
+      );
     }
 
     // ==================== SLIDE FINAL: CIERRE ====================

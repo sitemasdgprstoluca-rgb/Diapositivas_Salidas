@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import { 
-  crearNuevaSupervision, 
-  crearNuevaArea,
+import {
+  crearNuevaSupervision,
   guardarSupervision as guardarEnStorage,
   obtenerSupervisiones,
   obtenerSupervisionPorId,
   eliminarSupervision as eliminarDeStorage,
 } from '../utils/storage';
+import { calcularPromedioGeneral } from '../constants/data';
 
 // Estado inicial
 const initialState = {
@@ -24,13 +24,23 @@ const ACTIONS = {
   SET_SUPERVISION_ACTUAL: 'SET_SUPERVISION_ACTUAL',
   NUEVA_SUPERVISION: 'NUEVA_SUPERVISION',
   ACTUALIZAR_DATOS_GENERALES: 'ACTUALIZAR_DATOS_GENERALES',
-  AGREGAR_AREA: 'AGREGAR_AREA',
-  ACTUALIZAR_AREA: 'ACTUALIZAR_AREA',
-  ELIMINAR_AREA: 'ELIMINAR_AREA',
-  REORDENAR_AREAS: 'REORDENAR_AREAS',
+  ACTUALIZAR_RUBRO: 'ACTUALIZAR_RUBRO',
+  ACTUALIZAR_CRITERIO: 'ACTUALIZAR_CRITERIO',
   AGREGAR_FOTO: 'AGREGAR_FOTO',
   ELIMINAR_FOTO: 'ELIMINAR_FOTO',
   LIMPIAR_SUPERVISION: 'LIMPIAR_SUPERVISION',
+};
+
+// Helper: recalcular promedio cada vez que cambian rubros
+const conPromedioActualizado = (supervision) => {
+  const promedio = calcularPromedioGeneral(supervision.areas || []);
+  return {
+    ...supervision,
+    datosGenerales: {
+      ...supervision.datosGenerales,
+      promedioGeneral: promedio,
+    },
+  };
 };
 
 // Reducer
@@ -38,19 +48,19 @@ function supervisionReducer(state, action) {
   switch (action.type) {
     case ACTIONS.SET_CARGANDO:
       return { ...state, cargando: action.payload };
-    
+
     case ACTIONS.SET_ERROR:
       return { ...state, error: action.payload, cargando: false };
-    
+
     case ACTIONS.SET_SUPERVISIONES:
       return { ...state, supervisiones: action.payload, cargando: false };
-    
+
     case ACTIONS.SET_SUPERVISION_ACTUAL:
       return { ...state, supervisionActual: action.payload, cargando: false };
-    
+
     case ACTIONS.NUEVA_SUPERVISION:
       return { ...state, supervisionActual: crearNuevaSupervision() };
-    
+
     case ACTIONS.ACTUALIZAR_DATOS_GENERALES:
       return {
         ...state,
@@ -62,81 +72,74 @@ function supervisionReducer(state, action) {
           },
         },
       };
-    
-    case ACTIONS.AGREGAR_AREA:
-      return {
-        ...state,
-        supervisionActual: {
-          ...state.supervisionActual,
-          areas: [...state.supervisionActual.areas, crearNuevaArea()],
-        },
+
+    case ACTIONS.ACTUALIZAR_RUBRO: {
+      const nuevaSupervision = {
+        ...state.supervisionActual,
+        areas: state.supervisionActual.areas.map((rubro) =>
+          rubro.id === action.payload.id
+            ? { ...rubro, ...action.payload.datos }
+            : rubro
+        ),
       };
-    
-    case ACTIONS.ACTUALIZAR_AREA:
+      return {
+        ...state,
+        supervisionActual: conPromedioActualizado(nuevaSupervision),
+      };
+    }
+
+    case ACTIONS.ACTUALIZAR_CRITERIO: {
+      const { rubroId, criterioId, cumple } = action.payload;
       return {
         ...state,
         supervisionActual: {
           ...state.supervisionActual,
-          areas: state.supervisionActual.areas.map((area) =>
-            area.id === action.payload.id
-              ? { ...area, ...action.payload.datos }
-              : area
+          areas: state.supervisionActual.areas.map((rubro) =>
+            rubro.id === rubroId
+              ? {
+                  ...rubro,
+                  criterios: rubro.criterios.map((c) =>
+                    c.id === criterioId ? { ...c, cumple } : c
+                  ),
+                }
+              : rubro
           ),
         },
       };
-    
-    case ACTIONS.ELIMINAR_AREA:
-      return {
-        ...state,
-        supervisionActual: {
-          ...state.supervisionActual,
-          areas: state.supervisionActual.areas.filter(
-            (area) => area.id !== action.payload
-          ),
-        },
-      };
-    
-    case ACTIONS.REORDENAR_AREAS:
-      return {
-        ...state,
-        supervisionActual: {
-          ...state.supervisionActual,
-          areas: action.payload,
-        },
-      };
-    
+    }
+
     case ACTIONS.AGREGAR_FOTO:
       return {
         ...state,
         supervisionActual: {
           ...state.supervisionActual,
-          areas: state.supervisionActual.areas.map((area) =>
-            area.id === action.payload.areaId
-              ? { ...area, fotos: [...area.fotos, action.payload.foto] }
-              : area
+          areas: state.supervisionActual.areas.map((rubro) =>
+            rubro.id === action.payload.areaId
+              ? { ...rubro, fotos: [...rubro.fotos, action.payload.foto] }
+              : rubro
           ),
         },
       };
-    
+
     case ACTIONS.ELIMINAR_FOTO:
       return {
         ...state,
         supervisionActual: {
           ...state.supervisionActual,
-          areas: state.supervisionActual.areas.map((area) =>
-            area.id === action.payload.areaId
+          areas: state.supervisionActual.areas.map((rubro) =>
+            rubro.id === action.payload.areaId
               ? {
-                  ...area,
-                  fotos: area.fotos.filter((_, idx) => idx !== action.payload.fotoIndex),
+                  ...rubro,
+                  fotos: rubro.fotos.filter((_, idx) => idx !== action.payload.fotoIndex),
                 }
-              : area
+              : rubro
           ),
         },
       };
-    
+
     case ACTIONS.LIMPIAR_SUPERVISION:
       return { ...state, supervisionActual: null };
-    
+
     default:
       return state;
   }
@@ -149,7 +152,6 @@ const SupervisionContext = createContext(null);
 export function SupervisionProvider({ children }) {
   const [state, dispatch] = useReducer(supervisionReducer, initialState);
 
-  // Cargar todas las supervisiones
   const cargarSupervisiones = useCallback(async () => {
     dispatch({ type: ACTIONS.SET_CARGANDO, payload: true });
     try {
@@ -160,12 +162,10 @@ export function SupervisionProvider({ children }) {
     }
   }, []);
 
-  // Crear nueva supervisión
   const nuevaSupervision = useCallback(() => {
     dispatch({ type: ACTIONS.NUEVA_SUPERVISION });
   }, []);
 
-  // Cargar supervisión existente
   const cargarSupervision = useCallback(async (id) => {
     dispatch({ type: ACTIONS.SET_CARGANDO, payload: true });
     try {
@@ -176,10 +176,9 @@ export function SupervisionProvider({ children }) {
     }
   }, []);
 
-  // Guardar supervisión actual
   const guardarSupervision = useCallback(async (estado = 'borrador') => {
     if (!state.supervisionActual) return null;
-    
+
     dispatch({ type: ACTIONS.SET_CARGANDO, payload: true });
     try {
       const supervisionGuardada = await guardarEnStorage({
@@ -195,7 +194,6 @@ export function SupervisionProvider({ children }) {
     }
   }, [state.supervisionActual, cargarSupervisiones]);
 
-  // Eliminar supervisión
   const eliminarSupervision = useCallback(async (id) => {
     dispatch({ type: ACTIONS.SET_CARGANDO, payload: true });
     try {
@@ -209,42 +207,30 @@ export function SupervisionProvider({ children }) {
     }
   }, [state.supervisionActual, cargarSupervisiones]);
 
-  // Actualizar datos generales
   const actualizarDatosGenerales = useCallback((datos) => {
     dispatch({ type: ACTIONS.ACTUALIZAR_DATOS_GENERALES, payload: datos });
   }, []);
 
-  // Agregar área
-  const agregarArea = useCallback(() => {
-    dispatch({ type: ACTIONS.AGREGAR_AREA });
+  // Actualiza un rubro (calificación, noAplica, observación, sinNovedad, etc.)
+  const actualizarRubro = useCallback((id, datos) => {
+    dispatch({ type: ACTIONS.ACTUALIZAR_RUBRO, payload: { id, datos } });
   }, []);
 
-  // Actualizar área
-  const actualizarArea = useCallback((id, datos) => {
-    dispatch({ type: ACTIONS.ACTUALIZAR_AREA, payload: { id, datos } });
+  // Mantiene compatibilidad con código que llama "actualizarArea"
+  const actualizarArea = actualizarRubro;
+
+  const actualizarCriterio = useCallback((rubroId, criterioId, cumple) => {
+    dispatch({ type: ACTIONS.ACTUALIZAR_CRITERIO, payload: { rubroId, criterioId, cumple } });
   }, []);
 
-  // Eliminar área
-  const eliminarArea = useCallback((id) => {
-    dispatch({ type: ACTIONS.ELIMINAR_AREA, payload: id });
-  }, []);
-
-  // Reordenar áreas
-  const reordenarAreas = useCallback((nuevasAreas) => {
-    dispatch({ type: ACTIONS.REORDENAR_AREAS, payload: nuevasAreas });
-  }, []);
-
-  // Agregar foto a área
   const agregarFoto = useCallback((areaId, foto) => {
     dispatch({ type: ACTIONS.AGREGAR_FOTO, payload: { areaId, foto } });
   }, []);
 
-  // Eliminar foto de área
   const eliminarFoto = useCallback((areaId, fotoIndex) => {
     dispatch({ type: ACTIONS.ELIMINAR_FOTO, payload: { areaId, fotoIndex } });
   }, []);
 
-  // Limpiar supervisión actual
   const limpiarSupervision = useCallback(() => {
     dispatch({ type: ACTIONS.LIMPIAR_SUPERVISION });
   }, []);
@@ -257,10 +243,9 @@ export function SupervisionProvider({ children }) {
     guardarSupervision,
     eliminarSupervision,
     actualizarDatosGenerales,
-    agregarArea,
+    actualizarRubro,
     actualizarArea,
-    eliminarArea,
-    reordenarAreas,
+    actualizarCriterio,
     agregarFoto,
     eliminarFoto,
     limpiarSupervision,
@@ -273,7 +258,6 @@ export function SupervisionProvider({ children }) {
   );
 }
 
-// Hook personalizado
 export function useSupervision() {
   const context = useContext(SupervisionContext);
   if (!context) {

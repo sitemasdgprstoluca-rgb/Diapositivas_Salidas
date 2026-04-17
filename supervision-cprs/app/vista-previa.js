@@ -27,6 +27,7 @@ import {
 import { validarSupervisionCompleta } from '../src/utils/validation';
 import { generarPPTX, compartirPPTX } from '../src/utils/pptxGenerator';
 import { generarPDF, compartirPDF } from '../src/utils/pdfGenerator';
+import { calcularPromedioGeneral, colorPorCalificacion } from '../src/constants/data';
 
 export default function VistaPreviaScreen() {
   const router = useRouter();
@@ -188,6 +189,10 @@ export default function VistaPreviaScreen() {
   );
 
   const totalFotos = areas.reduce((acc, a) => acc + (a.fotos?.length || 0), 0);
+  const noAplicaCount = areas.filter((a) => a.noAplica).length;
+  const evaluadosCount = areas.filter((a) => !a.noAplica && typeof a.calificacion === 'number').length;
+  const promedio = calcularPromedioGeneral(areas);
+  const colorPromedio = colorPorCalificacion(Math.round(promedio));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -236,72 +241,107 @@ export default function VistaPreviaScreen() {
           </View>
           <View style={styles.summaryStats}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{areas.length}</Text>
-              <Text style={styles.statLabel}>Área{areas.length !== 1 ? 's' : ''}</Text>
+              <Text style={styles.statNumber}>{evaluadosCount}</Text>
+              <Text style={styles.statLabel}>Evaluados</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{noAplicaCount}</Text>
+              <Text style={styles.statLabel}>N/A</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{totalFotos}</Text>
               <Text style={styles.statLabel}>Foto{totalFotos !== 1 ? 's' : ''}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{areas.filter(a => a.sinNovedad).length}</Text>
-              <Text style={styles.statLabel}>Sin novedad</Text>
+          </View>
+
+          {/* Tarjeta de promedio general */}
+          <View style={[styles.promedioCard, { backgroundColor: colorPromedio + '15', borderLeftColor: colorPromedio }]}>
+            <View>
+              <Text style={styles.promedioLabel}>PROMEDIO C.P.R.S.</Text>
+              <Text style={styles.promedioHint}>Media de rubros evaluados (excluye N/A)</Text>
             </View>
+            <Text style={[styles.promedioValue, { color: colorPromedio }]}>
+              {promedio.toFixed(2)}
+            </Text>
           </View>
         </View>
 
-        {/* Resumen de áreas */}
+        {/* Resumen de rubros */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📍 Áreas supervisadas</Text>
-          
+          <Text style={styles.sectionTitle}>📊 Indicadores por Rubro</Text>
+
           {areas.length === 0 ? (
             <View style={styles.warningCard}>
               <Text style={styles.warningIcon}>⚠️</Text>
               <Text style={styles.warningText}>
-                No se han registrado áreas. El documento se generará vacío.
+                No se han cargado rubros.
               </Text>
             </View>
           ) : (
-            areas.map((area, index) => (
-              <View key={area.id} style={styles.areaCard}>
-                <View style={styles.areaHeader}>
-                  <View style={styles.areaNumberBadge}>
-                    <Text style={styles.areaNumber}>{index + 1}</Text>
-                  </View>
-                  <Text style={styles.areaName}>{area.nombre || 'Sin nombre'}</Text>
-                  {area.sinNovedad && (
-                    <View style={styles.sinNovedadBadge}>
-                      <Text style={styles.sinNovedadText}>✓</Text>
+            areas.map((rubro, index) => {
+              const color = colorPorCalificacion(rubro.calificacion);
+              const criteriosCumplidos = (rubro.criterios || []).filter((c) => c.cumple === true).length;
+              const totalCriterios = (rubro.criterios || []).length;
+              return (
+                <View key={rubro.id} style={styles.areaCard}>
+                  <View style={styles.areaHeader}>
+                    <View style={styles.areaNumberBadge}>
+                      <Text style={styles.areaNumber}>{index + 1}</Text>
                     </View>
-                  )}
-                </View>
-                
-                <Text style={styles.areaObservacion} numberOfLines={2}>
-                  {area.sinNovedad ? 'Sin novedad' : area.observacion || 'Sin observación'}
-                </Text>
-                
-                {area.fotos && area.fotos.length > 0 && (
-                  <View style={styles.photosPreview}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {area.fotos.slice(0, 4).map((foto, fotoIndex) => (
-                        <Image 
-                          key={fotoIndex} 
-                          source={{ uri: foto.uri }} 
-                          style={styles.photoThumb}
-                        />
-                      ))}
-                      {area.fotos.length > 4 && (
-                        <View style={styles.morePhotos}>
-                          <Text style={styles.morePhotosText}>+{area.fotos.length - 4}</Text>
+                    <Text style={styles.areaName} numberOfLines={2}>
+                      {rubro.nombre}
+                    </Text>
+                    {rubro.noAplica ? (
+                      <View style={styles.naBadgePreview}>
+                        <Text style={styles.naBadgePreviewText}>N/A</Text>
+                      </View>
+                    ) : rubro.calificacion != null ? (
+                      <View style={[styles.calBadgePreview, { backgroundColor: color }]}>
+                        <Text style={styles.calBadgePreviewText}>{rubro.calificacion}</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.calBadgePendiente}>
+                        <Text style={styles.calBadgePendienteText}>—</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {!rubro.noAplica && (
+                    <>
+                      {totalCriterios > 0 && (
+                        <Text style={styles.criteriosSummary}>
+                          Criterios: {criteriosCumplidos}/{totalCriterios} cumplen
+                        </Text>
+                      )}
+                      <Text style={styles.areaObservacion} numberOfLines={2}>
+                        {rubro.sinNovedad ? 'Sin novedad' : rubro.observacion || 'Sin observación'}
+                      </Text>
+
+                      {rubro.fotos && rubro.fotos.length > 0 && (
+                        <View style={styles.photosPreview}>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {rubro.fotos.slice(0, 4).map((foto, fotoIndex) => (
+                              <Image
+                                key={fotoIndex}
+                                source={{ uri: foto.uri }}
+                                style={styles.photoThumb}
+                              />
+                            ))}
+                            {rubro.fotos.length > 4 && (
+                              <View style={styles.morePhotos}>
+                                <Text style={styles.morePhotosText}>+{rubro.fotos.length - 4}</Text>
+                              </View>
+                            )}
+                          </ScrollView>
                         </View>
                       )}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-            ))
+                    </>
+                  )}
+                </View>
+              );
+            })
           )}
         </View>
 
@@ -543,7 +583,81 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '20',
     marginHorizontal: 10,
   },
-  
+
+  // Promedio
+  promedioCard: {
+    marginTop: 14,
+    padding: 16,
+    borderRadius: 14,
+    borderLeftWidth: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  promedioLabel: {
+    fontSize: SIZES.sm,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: 0.5,
+  },
+  promedioHint: {
+    fontSize: SIZES.xs,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  promedioValue: {
+    fontSize: 40,
+    fontWeight: '800',
+    letterSpacing: -1,
+  },
+
+  // Badges de calificación en preview
+  calBadgePreview: {
+    minWidth: 36,
+    height: 36,
+    borderRadius: 18,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calBadgePreviewText: {
+    color: COLORS.white,
+    fontSize: SIZES.base,
+    fontWeight: '800',
+  },
+  naBadgePreview: {
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.textSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  naBadgePreviewText: {
+    color: COLORS.white,
+    fontSize: SIZES.xs,
+    fontWeight: '800',
+  },
+  calBadgePendiente: {
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.warning + '30',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calBadgePendienteText: {
+    color: COLORS.warning,
+    fontSize: SIZES.base,
+    fontWeight: '800',
+  },
+  criteriosSummary: {
+    fontSize: SIZES.xs,
+    color: COLORS.primary,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+
   // Section
   section: {
     marginBottom: SIZES.marginLarge,
