@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { crearClienteNavegador } from '../../lib/supabase-browser';
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -362,12 +361,10 @@ export default function LoginPage() {
             <div className="max-w-lg text-center space-y-8">
               {/* Logo */}
               <div className="relative group mb-4">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src="/brand/logo-sistema.png"
                   alt="Logo institucional"
-                  width={160}
-                  height={160}
-                  priority
                   className="h-32 xl:h-40 w-auto mx-auto object-contain transition-transform duration-500 group-hover:scale-105 drop-shadow-2xl"
                 />
               </div>

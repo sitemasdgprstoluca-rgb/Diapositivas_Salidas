@@ -67,7 +67,12 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
-    // Todas las rutas excepto assets y api
-    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
+    /*
+     * Aplica a todas las rutas excepto:
+     * - _next/static, _next/image, favicon.ico, api/
+     * - Archivos estáticos con extensión (png, jpg, svg, ico, webp, woff, woff2, etc.)
+     *   → incluye el contenido de public/ como /brand/logo-sistema.png
+     */
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:png|jpe?g|gif|svg|webp|ico|bmp|woff2?|ttf|otf|css|js|map|txt|xml|json|webmanifest)$).*)',
   ],
 };
