@@ -1,0 +1,45 @@
+# .easignore — archivos/carpetas excluidas al empaquetar el proyecto
+# para EAS Build. No los necesita el APK.
+
+# Assets de referencia / source (no usados por el código runtime)
+Todos los mapas/
+Imagenes_centro/
+plantilla.zip
+plantilla_extraida/
+*.pptx
+
+# Archivos de Windows que causan fallos al tar en Linux
+desktop.ini
+Thumbs.db
+**/desktop.ini
+**/Thumbs.db
+
+# Tests y scripts dev (no se ejecutan en el APK)
+__tests__/
+coverage/
+scripts/
+*.test.js
+
+# Git y CI
+.git/
+.github/
+
+# Dev logs
+npm-debug.log*
+yarn-debug.log*
+*.log
+
+# Lock locales
+.expo/
+.expo-shared/
+
+# Builds previos
+dist/
+build/
+ios/
+android/
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
