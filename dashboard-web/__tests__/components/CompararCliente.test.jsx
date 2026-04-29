@@ -110,8 +110,8 @@ describe('CompararCliente — integración', () => {
       />
     );
 
-    // El KPI muestra "3" como centros seleccionados
-    expect(screen.getByText('3')).toBeInTheDocument();
+    // El KPI "Centros seleccionados" muestra "3/5"
+    expect(screen.getByText('3/5')).toBeInTheDocument();
 
     // El radar y evolución muestran los primeros 3 como activos
     const radar = screen.getByTestId('radar-mock');
@@ -319,13 +319,13 @@ describe('CompararCliente — integración', () => {
       />
     );
 
-    // Default: 3
-    expect(screen.getByText(/3\/7 · máx 7/)).toBeInTheDocument();
+    // Default: 3 → badge "3/7"
+    expect(screen.getByText(/^3\/7$/)).toBeInTheDocument();
 
     // Toggle adds D, E → 5
     fireEvent.click(screen.getByRole('button', { name: /^D$/ }));
     fireEvent.click(screen.getByRole('button', { name: /^E$/ }));
 
-    expect(screen.getByText(/5\/7 · máx 7/)).toBeInTheDocument();
+    expect(screen.getByText(/^5\/7$/)).toBeInTheDocument();
   });
 });

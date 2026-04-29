@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,7 +14,13 @@ body {
   background: #FAF8F5;
   color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+/* === Tipografía institucional con tabular-nums para datos === */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* === Animaciones del login institucional === */
@@ -38,108 +46,152 @@ body {
   20%, 40%, 60%, 80% { transform: translateX(4px); }
 }
 
-.animate-float {
-  animation: float linear infinite;
-}
+.animate-float { animation: float linear infinite; }
+.animate-pulse-ring { animation: pulse-ring 4s ease-in-out infinite; }
+.animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
+.animate-shake { animation: shake 0.5s ease-in-out; }
 
-.animate-pulse-ring {
-  animation: pulse-ring 4s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 3s ease-in-out infinite;
-}
-
-.animate-shake {
-  animation: shake 0.5s ease-in-out;
-}
-
-.text-theme-primary {
-  color: #932043;
-}
-.text-theme-primary-hover {
-  color: #632842;
-}
-.border-theme-primary {
-  border-color: #932043;
-}
+/* === Tema institucional reusable === */
+.text-theme-primary { color: #9F2241; }
+.text-theme-primary-hover { color: #5C2E37; }
+.text-theme-accent { color: #B69566; }
+.border-theme-primary { border-color: #9F2241; }
 .bg-theme-gradient {
-  background: linear-gradient(135deg, #932043 0%, #632842 100%);
+  background: linear-gradient(135deg, #9F2241 0%, #5C2E37 100%);
+}
+.bg-theme-accent-gradient {
+  background: linear-gradient(135deg, #B69566 0%, #9B6F4A 100%);
 }
 
-/* === Dark dashboard analytics === */
+/* === Glassmorphism INSTITUCIONAL — 3 variantes ===
+   blanco:  fondo claro premium con sombra suave + ring
+   gris:    fondo neutro con tinte cálido institucional
+   oscuro:  fondo oscuro con glow dorado/vino
+*/
+.inst-card-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid rgba(159, 34, 65, 0.08);
+  box-shadow:
+    0 1px 2px 0 rgba(0, 0, 0, 0.04),
+    0 8px 24px -4px rgba(159, 34, 65, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+}
+
+.inst-card-warm {
+  background: linear-gradient(135deg, rgba(250, 248, 245, 0.95) 0%, rgba(245, 234, 208, 0.6) 100%);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(182, 149, 102, 0.18);
+  box-shadow: 0 6px 20px -4px rgba(182, 149, 102, 0.15);
+  border-radius: 16px;
+}
+
+.inst-card-dark {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(182, 149, 102, 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(15, 6, 8, 0.96) 0%, rgba(26, 11, 16, 0.94) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(182, 149, 102, 0.18);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 0 24px -4px rgba(159, 34, 65, 0.4);
+  border-radius: 16px;
+  color: #f8fafc;
+}
+
+.inst-card-light-hover:hover {
+  border-color: rgba(159, 34, 65, 0.2);
+  box-shadow:
+    0 4px 6px 0 rgba(0, 0, 0, 0.05),
+    0 16px 40px -8px rgba(159, 34, 65, 0.18);
+  transform: translateY(-2px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inst-card-dark-hover:hover {
+  border-color: rgba(182, 149, 102, 0.4);
+  box-shadow:
+    0 0 32px -2px rgba(182, 149, 102, 0.35),
+    0 0 0 1px rgba(182, 149, 102, 0.3);
+}
+
+/* === Glow text para números importantes === */
+.glow-gold {
+  text-shadow:
+    0 0 8px rgba(182, 149, 102, 0.6),
+    0 0 24px rgba(182, 149, 102, 0.25);
+}
+.glow-guinda {
+  text-shadow:
+    0 0 8px rgba(159, 34, 65, 0.55),
+    0 0 24px rgba(159, 34, 65, 0.25);
+}
+
+/* Box shadow glow */
+.shadow-glow-gold {
+  box-shadow:
+    0 0 20px rgba(182, 149, 102, 0.25),
+    inset 0 0 20px rgba(182, 149, 102, 0.05);
+}
+.border-glow-gold {
+  border: 1px solid rgba(182, 149, 102, 0.3);
+}
+
+/* Card analytics legacy — usa la versión nueva por compatibilidad */
+.analytics-card { @apply inst-card-dark; }
+.analytics-card-hover { @apply inst-card-dark-hover; }
+
+/* Background dashboard analytics */
 .bg-analytics {
   background:
-    radial-gradient(ellipse at 20% 15%, rgba(201, 168, 118, 0.12) 0%, transparent 45%),
-    radial-gradient(ellipse at 80% 85%, rgba(147, 32, 67, 0.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 15%, rgba(182, 149, 102, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 85%, rgba(159, 34, 65, 0.25) 0%, transparent 55%),
     radial-gradient(ellipse at 50% 50%, rgba(74, 26, 46, 0.4) 0%, transparent 60%),
     linear-gradient(180deg, #0f0608 0%, #1a0b10 50%, #0a0507 100%);
 }
 
-.glow-gold {
-  text-shadow:
-    0 0 8px rgba(201, 168, 118, 0.8),
-    0 0 24px rgba(201, 168, 118, 0.4);
-}
-
-.glow-guinda {
-  text-shadow:
-    0 0 8px rgba(202, 66, 100, 0.8),
-    0 0 24px rgba(147, 32, 67, 0.4);
-}
-
-.shadow-glow-gold {
-  box-shadow:
-    0 0 20px rgba(201, 168, 118, 0.25),
-    inset 0 0 20px rgba(201, 168, 118, 0.05);
-}
-
-.border-glow-gold {
-  border: 1px solid rgba(201, 168, 118, 0.3);
-}
-
-/* Card con backdrop blur tipo glassmorphism */
-.analytics-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(201, 168, 118, 0.15);
-  border-radius: 16px;
-}
-
-.analytics-card-hover:hover {
-  border-color: rgba(201, 168, 118, 0.4);
-  box-shadow: 0 0 30px rgba(201, 168, 118, 0.15);
-}
-
+/* === Animaciones premium === */
 @keyframes glow-pulse {
-  0%, 100% { text-shadow: 0 0 8px rgba(201, 168, 118, 0.6), 0 0 20px rgba(201, 168, 118, 0.3); }
-  50% { text-shadow: 0 0 12px rgba(201, 168, 118, 1), 0 0 32px rgba(201, 168, 118, 0.6); }
+  0%, 100% { text-shadow: 0 0 8px rgba(182,149,102,0.6), 0 0 20px rgba(182,149,102,0.25); }
+  50% { text-shadow: 0 0 12px rgba(182,149,102,1), 0 0 32px rgba(182,149,102,0.55); }
 }
-
-.animate-glow-pulse {
-  animation: glow-pulse 3s ease-in-out infinite;
-}
+.animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
 
 @keyframes slide-up-fade {
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-
-.animate-slide-up {
-  animation: slide-up-fade 0.6s ease-out forwards;
-}
-
-@keyframes draw-line {
-  0% { stroke-dashoffset: 1000; }
-  100% { stroke-dashoffset: 0; }
-}
+.animate-slide-up { animation: slide-up-fade 0.6s ease-out forwards; }
 
 /* Gradient text gold-to-guinda */
 .text-gradient-gold {
-  background: linear-gradient(135deg, #D4A94C 0%, #C9A876 50%, #E5C474 100%);
+  background: linear-gradient(135deg, #B69566 0%, #DDC9A3 50%, #9B6F4A 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+.text-gradient-inst {
+  background: linear-gradient(135deg, #9F2241 0%, #B69566 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* === Gradiente de header institucional === */
+.bg-header-inst {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(182,149,102,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(0,0,0,0.2) 0%, transparent 50%),
+    linear-gradient(135deg, #9F2241 0%, #5C2E37 100%);
+}
+
+/* === Tabular para datos numéricos en tablas === */
+table.data-table td.numeric,
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }

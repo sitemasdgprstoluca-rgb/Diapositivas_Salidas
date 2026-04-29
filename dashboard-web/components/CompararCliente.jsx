@@ -5,6 +5,8 @@ import RadarComparativo from './analytics/RadarComparativo';
 import EvolucionConPrediccion from './analytics/EvolucionConPrediccion';
 import RankingGeneral from './analytics/RankingGeneral';
 import InsightsIA from './analytics/InsightsIA';
+import HexKpiCard from './ui/HexKpiCard';
+import HudFrame from './ui/HudFrame';
 import {
   calcularRanking,
   generarInsights,
@@ -13,7 +15,8 @@ import {
   generarEvolucionData,
 } from '@/lib/analytics';
 
-const PALETA = ['#D4A94C', '#C64864', '#7CB342', '#1565C0', '#E65100', '#6A1B9A', '#00838F'];
+// Paleta institucional para diferenciar centros (vino, dorado, oscuro, complementarios)
+const PALETA = ['#9F2241', '#B69566', '#5C2E37', '#9B6F4A', '#7A5638', '#B94D69', '#C9B07F'];
 
 export default function CompararCliente({ centrosDisponibles, todasSups, rubrosPorSup }) {
   const [seleccionados, setSeleccionados] = useState(centrosDisponibles.slice(0, Math.min(3, centrosDisponibles.length)));
@@ -28,31 +31,26 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
     );
   };
 
-  // Datos por centro: array de { fecha, promedio, id, fechaRaw }
   const seriesPorCentro = useMemo(
     () => generarSeriesPorCentro(seleccionados, todasSups),
     [seleccionados, todasSups]
   );
 
-  // Ranking con delta vs primera visita
   const ranking = useMemo(
     () => calcularRanking(seleccionados, seriesPorCentro),
     [seleccionados, seriesPorCentro]
   );
 
-  // Evolución temporal unificada con proyección lineal de la próxima visita
   const evolucionData = useMemo(
     () => generarEvolucionData(seleccionados, seriesPorCentro),
     [seleccionados, seriesPorCentro]
   );
 
-  // Datos para radar (última supervisión por centro, calificación por rubro)
   const radarData = useMemo(
     () => calcularRadarData(seleccionados, seriesPorCentro, rubrosPorSup),
     [seleccionados, seriesPorCentro, rubrosPorSup]
   );
 
-  // Insights de IA calculados automáticamente (5 reglas, ver lib/analytics.js)
   const insights = useMemo(
     () => generarInsights(ranking, seriesPorCentro, radarData, evolucionData, seleccionados),
     [seleccionados, ranking, seriesPorCentro, radarData, evolucionData]
@@ -62,42 +60,66 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
 
   return (
     <div>
-      {/* KPIs superiores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <KPI label="Centros seleccionados" value={seleccionados.length} suffix={`/${centrosDisponibles.length}`} />
-        <KPI label="Rubros analizados" value={radarData.length} suffix="/15" />
-        <KPI label="Supervisiones" value={totalVisitas} />
-        <KPI label="Insights IA" value={insights.length} highlight />
+      {/* KPIs hexagonales premium */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <HexKpiCard
+          icon="🏛️"
+          value={`${seleccionados.length}/${centrosDisponibles.length}`}
+          label="Centros seleccionados"
+          tone="guinda"
+        />
+        <HexKpiCard
+          icon="📊"
+          value={`${radarData.length}/15`}
+          label="Rubros analizados"
+          tone="dorado"
+        />
+        <HexKpiCard
+          icon="📋"
+          value={totalVisitas}
+          label="Supervisiones"
+          tone="neutro"
+        />
+        <HexKpiCard
+          icon="🧠"
+          value={insights.length}
+          label="Insights IA"
+          tone="dorado"
+          hint="generados automáticamente"
+        />
       </div>
 
       {/* Selector de centros */}
-      <div className="analytics-card p-5 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-white/90 font-bold text-sm uppercase tracking-wider">
-            Selecciona centros a comparar
-          </h3>
-          <span className="text-xs text-white/50">
-            {seleccionados.length}/7 · máx 7
+      <HudFrame
+        title="Selecciona centros a comparar"
+        subtitle="Hasta 7 centros simultáneos · clic para alternar"
+        tone="dark"
+        badge={
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-dorado-500/15 border border-dorado-500/30 text-[11px] font-bold text-dorado-300 tabular-nums">
+            <span className="w-1.5 h-1.5 rounded-full bg-dorado-500 animate-pulse" />
+            {seleccionados.length}/7
           </span>
-        </div>
+        }
+        className="mb-8"
+      >
         <div className="flex flex-wrap gap-2">
-          {centrosDisponibles.map((c, i) => {
+          {centrosDisponibles.map((c) => {
             const activo = seleccionados.includes(c);
             const color = PALETA[seleccionados.indexOf(c) % PALETA.length];
             return (
               <button
                 key={c}
                 onClick={() => toggle(c)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${
+                className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${
                   activo
                     ? 'text-white border-transparent shadow-lg'
-                    : 'text-white/60 border-white/20 hover:border-white/50 hover:text-white/90 bg-white/5'
+                    : 'text-white/65 border-white/15 hover:border-dorado-500/50 hover:text-white bg-white/5'
                 }`}
                 style={
                   activo
                     ? {
-                        background: `linear-gradient(135deg, ${color}CC, ${color}66)`,
-                        boxShadow: `0 0 16px ${color}44`,
+                        background: `linear-gradient(135deg, ${color} 0%, ${color}99 100%)`,
+                        boxShadow: `0 0 18px -2px ${color}88`,
                       }
                     : undefined
                 }
@@ -107,80 +129,67 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
             );
           })}
         </div>
-      </div>
+      </HudFrame>
 
       {seleccionados.length === 0 ? (
-        <div className="analytics-card p-16 text-center">
-          <p className="text-white/40 text-lg">Selecciona al menos un centro para ver las analíticas.</p>
-        </div>
+        <HudFrame tone="dark" className="text-center py-20">
+          <p className="text-white/45 text-lg">
+            Selecciona al menos un centro para ver las analíticas.
+          </p>
+        </HudFrame>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Col izquierda: Ranking + Insights */}
           <div className="space-y-6 lg:col-span-1">
-            <div className="analytics-card p-5 analytics-card-hover">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-yellow-400">🏆</span>
-                <h3 className="text-white/90 font-bold text-sm uppercase tracking-wider">Ranking General</h3>
-              </div>
+            <HudFrame
+              title="Ranking general"
+              subtitle="ordenado por promedio · delta vs primera visita"
+              tone="dark"
+              badge={<span className="text-base">🏆</span>}
+            >
               <RankingGeneral centros={ranking} />
-            </div>
+            </HudFrame>
 
-            <div className="analytics-card p-5 analytics-card-hover">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-purple-400">🧠</span>
-                <h3 className="text-white/90 font-bold text-sm uppercase tracking-wider">Insights de IA</h3>
-              </div>
+            <HudFrame
+              title="Insights de IA"
+              subtitle="patrones detectados automáticamente"
+              tone="dark"
+              badge={<span className="text-base">🧠</span>}
+            >
               <InsightsIA insights={insights} />
-            </div>
+            </HudFrame>
           </div>
 
           {/* Col central: Radar */}
-          <div className="analytics-card p-5 analytics-card-hover lg:col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-yellow-300">📊</span>
-                <h3 className="text-white/90 font-bold text-sm uppercase tracking-wider">
-                  Desempeño por Rubro
-                </h3>
-              </div>
-              <span className="text-[10px] text-white/40">última supervisión</span>
-            </div>
+          <HudFrame
+            title="Desempeño por rubro"
+            subtitle="última supervisión por centro"
+            tone="dark"
+            badge={<span className="text-base">📊</span>}
+            className="lg:col-span-1"
+          >
             <RadarComparativo datos={radarData} centros={seleccionados} />
-          </div>
+          </HudFrame>
 
           {/* Col derecha: Evolución + predicción */}
-          <div className="analytics-card p-5 analytics-card-hover lg:col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-green-300">📈</span>
-                <h3 className="text-white/90 font-bold text-sm uppercase tracking-wider">
-                  Evolución + Predicción
-                </h3>
-              </div>
-            </div>
+          <HudFrame
+            title="Evolución + predicción"
+            subtitle="regresión lineal sobre las últimas visitas"
+            tone="dark"
+            badge={<span className="text-base">📈</span>}
+            className="lg:col-span-1"
+          >
             <EvolucionConPrediccion
               datos={evolucionData.rows}
               centros={seleccionados}
               ultimaFechaReal={evolucionData.ultimaFechaReal}
             />
-            <p className="text-[10px] text-white/40 text-center mt-2 italic">
-              Zona dorada = proyección por regresión lineal sobre últimas visitas
+            <p className="text-[10px] text-dorado-300/60 text-center mt-3 italic uppercase tracking-wider">
+              Zona dorada = proyección lineal próxima visita
             </p>
-          </div>
+          </HudFrame>
         </div>
       )}
-    </div>
-  );
-}
-
-function KPI({ label, value, suffix, highlight }) {
-  return (
-    <div className={`analytics-card p-4 ${highlight ? 'shadow-glow-gold' : ''}`}>
-      <p className="text-[10px] uppercase tracking-wider text-white/50 font-bold mb-1">{label}</p>
-      <p className={`text-3xl font-extrabold ${highlight ? 'text-gradient-gold animate-glow-pulse' : 'text-white'}`}>
-        {value}
-        {suffix && <span className="text-base text-white/40 font-medium"> {suffix}</span>}
-      </p>
     </div>
   );
 }
