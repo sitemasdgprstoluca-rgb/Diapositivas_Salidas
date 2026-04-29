@@ -69,15 +69,119 @@ export function calcularRanking(seleccionados, seriesPorCentro) {
 }
 
 /**
- * Genera insights de IA aplicando 5 reglas en orden de inserción:
- *  1. mejora        — mejor delta positivo entre centros con ≥2 visitas
- *  2. riesgo        — peor delta < -0.5 entre centros con ≥2 visitas
- *  3. consistencia  — menor stdDev (<0.8) entre centros con ≥3 visitas
- *  4. oportunidad   — rubro más débil (≤6) del peor centro del ranking
- *  5. prediccion    — proyección con mayor |delta| > 0.1 sobre último valor
+ * Regla 1 — Mejor mejora: centro con mayor delta positivo entre los que
+ * tienen ≥2 visitas. Devuelve el insight o null si nadie cumple.
  *
- * El orden de los items en el array final importa para la UI; conserva
- * el orden de inserción de las reglas.
+ * @param {Array<{nombre:string, delta:number|null, visitas:number}>} ranking
+ * @returns {{tipo:'mejora', titulo:string, descripcion:string}|null}
+ */
+export function regla1Mejora(ranking) {
+  const conDelta = ranking.filter((r) => r.delta != null && r.visitas >= 2);
+  if (conDelta.length === 0) return null;
+  const mejor = [...conDelta].sort((a, b) => b.delta - a.delta)[0];
+  if (mejor.delta <= 0) return null;
+  return {
+    tipo: 'mejora',
+    titulo: 'Mejor progresión',
+    descripcion: `${mejor.nombre} subió +${mejor.delta.toFixed(2)} puntos desde su primera visita. Reconoce prácticas y replícalas.`,
+  };
+}
+
+/**
+ * Regla 2 — Regresión detectada: centro con peor delta < -0.5 entre los
+ * que tienen ≥2 visitas. Devuelve insight o null.
+ *
+ * @param {Array<{nombre:string, delta:number|null, visitas:number}>} ranking
+ * @returns {{tipo:'riesgo', titulo:string, descripcion:string}|null}
+ */
+export function regla2Riesgo(ranking) {
+  const conDelta = ranking.filter((r) => r.delta != null && r.visitas >= 2);
+  if (conDelta.length === 0) return null;
+  const peor = [...conDelta].sort((a, b) => a.delta - b.delta)[0];
+  if (peor.delta >= -0.5) return null;
+  return {
+    tipo: 'riesgo',
+    titulo: 'Regresión detectada',
+    descripcion: `${peor.nombre} bajó ${Math.abs(peor.delta).toFixed(2)} puntos. Se recomienda supervisión de seguimiento.`,
+  };
+}
+
+/**
+ * Regla 3 — Consistencia: centro con menor stdDev (<0.8) entre los que
+ * tienen ≥3 visitas. Devuelve insight o null.
+ *
+ * @param {string[]} seleccionados
+ * @param {Object<string, Array<{promedio:number}>>} seriesPorCentro
+ * @returns {{tipo:'consistencia', titulo:string, descripcion:string}|null}
+ */
+export function regla3Consistencia(seleccionados, seriesPorCentro) {
+  const consistencias = seleccionados
+    .map((nombre) => {
+      const serie = (seriesPorCentro[nombre] || []).map((s) => s.promedio);
+      return { nombre, sd: stdDev(serie), visitas: serie.length };
+    })
+    .filter((c) => c.visitas >= 3);
+  if (consistencias.length === 0) return null;
+  const masCons = [...consistencias].sort((a, b) => a.sd - b.sd)[0];
+  if (masCons.sd >= 0.8) return null;
+  return {
+    tipo: 'consistencia',
+    titulo: 'Mayor consistencia',
+    descripcion: `${masCons.nombre} mantiene desempeño estable (desviación de ${masCons.sd.toFixed(2)} en ${masCons.visitas} visitas).`,
+  };
+}
+
+/**
+ * Regla 4 — Área de oportunidad: rubro más bajo (≤6) del peor centro
+ * del ranking. Devuelve insight o null.
+ *
+ * @param {Array<{nombre:string}>} ranking
+ * @param {Array<{rubro:string, orden:number, [centro:string]:number}>} radarData
+ * @returns {{tipo:'oportunidad', titulo:string, descripcion:string}|null}
+ */
+export function regla4Oportunidad(ranking, radarData) {
+  if (ranking.length === 0 || radarData.length === 0) return null;
+  const peorCentro = ranking[ranking.length - 1].nombre;
+  const rubroPeor = [...radarData]
+    .filter((r) => r[peorCentro] != null)
+    .sort((a, b) => (a[peorCentro] || 0) - (b[peorCentro] || 0))[0];
+  if (!rubroPeor || rubroPeor[peorCentro] > 6) return null;
+  return {
+    tipo: 'oportunidad',
+    titulo: 'Área de oportunidad',
+    descripcion: `${peorCentro} tiene su calificación más baja en "${rubroPeor.rubro}" (${rubroPeor[peorCentro]}/10). Focalizar acciones correctivas ahí.`,
+  };
+}
+
+/**
+ * Regla 5 — Tendencia proyectada: proyección con mayor |delta|>0.1 sobre
+ * el último valor real. Devuelve insight o null.
+ *
+ * @param {Object<string, Array<{promedio:number}>>} seriesPorCentro
+ * @param {{proyecciones?: Object<string, number>}} evolucionData
+ * @returns {{tipo:'prediccion', titulo:string, descripcion:string}|null}
+ */
+export function regla5Prediccion(seriesPorCentro, evolucionData) {
+  const projs = Object.entries(evolucionData?.proyecciones || {});
+  if (projs.length === 0) return null;
+  const subiendo = projs
+    .map(([nombre, proy]) => {
+      const ultimo = (seriesPorCentro[nombre] || []).slice(-1)[0]?.promedio || 0;
+      return { nombre, proy, delta: proy - ultimo };
+    })
+    .sort((a, b) => b.delta - a.delta)[0];
+  if (!subiendo || Math.abs(subiendo.delta) <= 0.1) return null;
+  return {
+    tipo: 'prediccion',
+    titulo: 'Tendencia proyectada',
+    descripcion: `${subiendo.nombre} proyecta ${subiendo.delta > 0 ? 'subir' : 'bajar'} a ${subiendo.proy.toFixed(2)} en la próxima visita según tendencia.`,
+  };
+}
+
+/**
+ * Genera insights de IA orquestando las 5 reglas en orden:
+ * mejora → riesgo → consistencia → oportunidad → prediccion.
+ * El orden importa: la UI los renderiza en orden de array.
  *
  * @param {Array<{nombre:string, promedio:number, delta:number|null, visitas:number}>} ranking
  * @param {Object<string, Array<{promedio:number}>>} seriesPorCentro
@@ -88,80 +192,11 @@ export function calcularRanking(seleccionados, seriesPorCentro) {
  */
 export function generarInsights(ranking, seriesPorCentro, radarData, evolucionData, seleccionados) {
   if (seleccionados.length === 0) return [];
-  const out = [];
-
-  // 1) Mejor mejora
-  const conDelta = ranking.filter((r) => r.delta != null && r.visitas >= 2);
-  if (conDelta.length > 0) {
-    const mejor = [...conDelta].sort((a, b) => b.delta - a.delta)[0];
-    if (mejor.delta > 0) {
-      out.push({
-        tipo: 'mejora',
-        titulo: 'Mejor progresión',
-        descripcion: `${mejor.nombre} subió +${mejor.delta.toFixed(2)} puntos desde su primera visita. Reconoce prácticas y replícalas.`,
-      });
-    }
-    // 2) Regresión
-    const peor = [...conDelta].sort((a, b) => a.delta - b.delta)[0];
-    if (peor.delta < -0.5) {
-      out.push({
-        tipo: 'riesgo',
-        titulo: 'Regresión detectada',
-        descripcion: `${peor.nombre} bajó ${Math.abs(peor.delta).toFixed(2)} puntos. Se recomienda supervisión de seguimiento.`,
-      });
-    }
-  }
-
-  // 3) Más consistente
-  const consistencias = seleccionados
-    .map((nombre) => {
-      const serie = (seriesPorCentro[nombre] || []).map((s) => s.promedio);
-      return { nombre, sd: stdDev(serie), visitas: serie.length };
-    })
-    .filter((c) => c.visitas >= 3);
-  if (consistencias.length > 0) {
-    const masCons = [...consistencias].sort((a, b) => a.sd - b.sd)[0];
-    if (masCons.sd < 0.8) {
-      out.push({
-        tipo: 'consistencia',
-        titulo: 'Mayor consistencia',
-        descripcion: `${masCons.nombre} mantiene desempeño estable (desviación de ${masCons.sd.toFixed(2)} en ${masCons.visitas} visitas).`,
-      });
-    }
-  }
-
-  // 4) Oportunidad: rubro más débil del peor centro
-  if (ranking.length > 0 && radarData.length > 0) {
-    const peorCentro = ranking[ranking.length - 1].nombre;
-    const rubroPeor = [...radarData]
-      .filter((r) => r[peorCentro] != null)
-      .sort((a, b) => (a[peorCentro] || 0) - (b[peorCentro] || 0))[0];
-    if (rubroPeor && rubroPeor[peorCentro] <= 6) {
-      out.push({
-        tipo: 'oportunidad',
-        titulo: 'Área de oportunidad',
-        descripcion: `${peorCentro} tiene su calificación más baja en "${rubroPeor.rubro}" (${rubroPeor[peorCentro]}/10). Focalizar acciones correctivas ahí.`,
-      });
-    }
-  }
-
-  // 5) Predicción destacada
-  const projs = Object.entries(evolucionData.proyecciones || {});
-  if (projs.length > 0) {
-    const subiendo = projs
-      .map(([nombre, proy]) => {
-        const ultimo = (seriesPorCentro[nombre] || []).slice(-1)[0]?.promedio || 0;
-        return { nombre, proy, delta: proy - ultimo };
-      })
-      .sort((a, b) => b.delta - a.delta)[0];
-    if (subiendo && Math.abs(subiendo.delta) > 0.1) {
-      out.push({
-        tipo: 'prediccion',
-        titulo: 'Tendencia proyectada',
-        descripcion: `${subiendo.nombre} proyecta ${subiendo.delta > 0 ? 'subir' : 'bajar'} a ${subiendo.proy.toFixed(2)} en la próxima visita según tendencia.`,
-      });
-    }
-  }
-
-  return out;
+  return [
+    regla1Mejora(ranking),
+    regla2Riesgo(ranking),
+    regla3Consistencia(seleccionados, seriesPorCentro),
+    regla4Oportunidad(ranking, radarData),
+    regla5Prediccion(seriesPorCentro, evolucionData),
+  ].filter((insight) => insight !== null);
 }

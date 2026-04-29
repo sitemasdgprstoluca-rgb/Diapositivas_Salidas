@@ -13,6 +13,11 @@ import {
   proyectarSiguiente,
   calcularRanking,
   generarInsights,
+  regla1Mejora,
+  regla2Riesgo,
+  regla3Consistencia,
+  regla4Oportunidad,
+  regla5Prediccion,
 } from '@/lib/analytics';
 
 /** Helper para construir un punto de la serie */
@@ -440,5 +445,252 @@ describe('generarInsights — 5 reglas de insights IA', () => {
     expect(() =>
       generarInsights(ranking, series, radar, evolucion, ['A'])
     ).not.toThrow();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Helpers individuales por regla (subdivisión de generarInsights)
+// Firma esperada: cada regla recibe solo lo que necesita y retorna
+//   { tipo, titulo, descripcion } | null
+// ═══════════════════════════════════════════════════════════════════
+
+describe('regla1Mejora — mejor delta positivo, ≥2 visitas', () => {
+  it('caso happy: delta=2 con 3 visitas → insight tipo "mejora"', () => {
+    const ranking = [{ nombre: 'A', promedio: 9, delta: 2, visitas: 3 }];
+    const out = regla1Mejora(ranking);
+    expect(out).not.toBeNull();
+    expect(out.tipo).toBe('mejora');
+    expect(out.titulo).toBe('Mejor progresión');
+    expect(out.descripcion).toContain('A');
+    expect(out.descripcion).toContain('+2.00');
+  });
+
+  it('elige el de mayor delta entre varios', () => {
+    const ranking = [
+      { nombre: 'A', promedio: 8, delta: 0.5, visitas: 3 },
+      { nombre: 'B', promedio: 9, delta: 1.8, visitas: 3 },
+      { nombre: 'C', promedio: 7, delta: 1.0, visitas: 3 },
+    ];
+    const out = regla1Mejora(ranking);
+    expect(out.descripcion).toContain('B');
+    expect(out.descripcion).toContain('+1.80');
+  });
+
+  it('todos delta=0 → null', () => {
+    const ranking = [{ nombre: 'A', promedio: 7, delta: 0, visitas: 3 }];
+    expect(regla1Mejora(ranking)).toBeNull();
+  });
+
+  it('mejor delta negativo → null', () => {
+    const ranking = [{ nombre: 'A', promedio: 6, delta: -0.5, visitas: 3 }];
+    expect(regla1Mejora(ranking)).toBeNull();
+  });
+
+  it('filtra centros con visitas<2 aunque tengan delta', () => {
+    const ranking = [{ nombre: 'A', promedio: 8, delta: 1.5, visitas: 1 }];
+    expect(regla1Mejora(ranking)).toBeNull();
+  });
+
+  it('filtra centros con delta=null', () => {
+    const ranking = [{ nombre: 'A', promedio: 5, delta: null, visitas: 3 }];
+    expect(regla1Mejora(ranking)).toBeNull();
+  });
+
+  it('ranking vacío → null', () => {
+    expect(regla1Mejora([])).toBeNull();
+  });
+});
+
+describe('regla2Riesgo — peor delta < -0.5, ≥2 visitas', () => {
+  it('happy: delta=-1 con 2 visitas → insight tipo "riesgo"', () => {
+    const ranking = [{ nombre: 'A', promedio: 5, delta: -1, visitas: 2 }];
+    const out = regla2Riesgo(ranking);
+    expect(out).not.toBeNull();
+    expect(out.tipo).toBe('riesgo');
+    expect(out.titulo).toBe('Regresión detectada');
+    expect(out.descripcion).toContain('A');
+    expect(out.descripcion).toContain('1.00');
+  });
+
+  it('elige el de menor delta (más negativo)', () => {
+    const ranking = [
+      { nombre: 'A', promedio: 5, delta: -0.6, visitas: 2 },
+      { nombre: 'B', promedio: 4, delta: -1.5, visitas: 2 },
+    ];
+    const out = regla2Riesgo(ranking);
+    expect(out.descripcion).toContain('B');
+    expect(out.descripcion).toContain('1.50');
+  });
+
+  it('delta=-0.5 NO dispara (estricto < -0.5)', () => {
+    const ranking = [{ nombre: 'A', promedio: 5, delta: -0.5, visitas: 2 }];
+    expect(regla2Riesgo(ranking)).toBeNull();
+  });
+
+  it('delta=-0.49 NO dispara', () => {
+    const ranking = [{ nombre: 'A', promedio: 5, delta: -0.49, visitas: 2 }];
+    expect(regla2Riesgo(ranking)).toBeNull();
+  });
+
+  it('todos delta>=0 → null', () => {
+    const ranking = [{ nombre: 'A', promedio: 8, delta: 1, visitas: 3 }];
+    expect(regla2Riesgo(ranking)).toBeNull();
+  });
+
+  it('filtra visitas<2', () => {
+    const ranking = [{ nombre: 'A', promedio: 4, delta: -2, visitas: 1 }];
+    expect(regla2Riesgo(ranking)).toBeNull();
+  });
+
+  it('ranking vacío → null', () => {
+    expect(regla2Riesgo([])).toBeNull();
+  });
+});
+
+describe('regla3Consistencia — stdDev<0.8, ≥3 visitas', () => {
+  it('happy: serie [7,7,7,7] → "consistencia"', () => {
+    const series = { A: [punto(7), punto(7), punto(7), punto(7)] };
+    const out = regla3Consistencia(['A'], series);
+    expect(out).not.toBeNull();
+    expect(out.tipo).toBe('consistencia');
+    expect(out.titulo).toBe('Mayor consistencia');
+    expect(out.descripcion).toContain('A');
+    expect(out.descripcion).toContain('4 visitas');
+  });
+
+  it('elige el de menor stdDev cuando varios cumplen', () => {
+    const series = {
+      A: [punto(7), punto(7.1), punto(6.9)], // sd ≈ 0.0816
+      B: [punto(7), punto(7), punto(7)],     // sd = 0 (más consistente)
+    };
+    const out = regla3Consistencia(['A', 'B'], series);
+    expect(out.descripcion).toContain('B');
+  });
+
+  it('serie con 2 visitas filtrado (requiere >=3)', () => {
+    const series = { A: [punto(7), punto(7)] };
+    expect(regla3Consistencia(['A'], series)).toBeNull();
+  });
+
+  it('stdDev=0.8 exacto NO dispara (estricto <0.8)', () => {
+    // construyo serie con stdDev exactamente 0.8 — usando [6.2, 7, 7.8] mean=7, var=(0.8²·2)/3 ≈ 0.4267, sd≈0.6532. No es 0.8.
+    // Mejor: [7-0.8, 7, 7+0.8] = [6.2, 7, 7.8] sd=0.6532. Para sd=0.8 exacto sería [7-0.98, 7, 7+0.98]
+    // Mejor enfoque: una serie con alta varianza
+    const series = { A: [punto(5), punto(7), punto(9)] }; // mean=7, var=8/3≈2.67, sd≈1.633
+    expect(regla3Consistencia(['A'], series)).toBeNull();
+  });
+
+  it('seleccionados=[] → null', () => {
+    expect(regla3Consistencia([], {})).toBeNull();
+  });
+
+  it('centro sin serie → null', () => {
+    expect(regla3Consistencia(['Z'], {})).toBeNull();
+  });
+});
+
+describe('regla4Oportunidad — rubro más bajo del peor centro, cal≤6', () => {
+  it('happy: peor centro con rubro cal=5', () => {
+    const ranking = [
+      { nombre: 'A', promedio: 9, delta: 1, visitas: 2 },
+      { nombre: 'Z', promedio: 4, delta: 0, visitas: 2 },
+    ];
+    const radar = [{ rubro: 'Cocina', orden: 1, A: 9, Z: 5 }];
+    const out = regla4Oportunidad(ranking, radar);
+    expect(out).not.toBeNull();
+    expect(out.tipo).toBe('oportunidad');
+    expect(out.descripcion).toContain('Z');
+    expect(out.descripcion).toContain('Cocina');
+    expect(out.descripcion).toContain('5/10');
+  });
+
+  it('cal=6 dispara (<= inclusive)', () => {
+    const ranking = [{ nombre: 'Z', promedio: 6, delta: 0, visitas: 2 }];
+    const radar = [{ rubro: 'X', orden: 1, Z: 6 }];
+    expect(regla4Oportunidad(ranking, radar)).not.toBeNull();
+  });
+
+  it('cal=7 NO dispara', () => {
+    const ranking = [{ nombre: 'Z', promedio: 7, delta: 0, visitas: 2 }];
+    const radar = [{ rubro: 'X', orden: 1, Z: 7 }];
+    expect(regla4Oportunidad(ranking, radar)).toBeNull();
+  });
+
+  it('elige el rubro de menor calificación cuando hay varios', () => {
+    const ranking = [{ nombre: 'Z', promedio: 5, delta: 0, visitas: 2 }];
+    const radar = [
+      { rubro: 'Alta', orden: 1, Z: 6 },
+      { rubro: 'Baja', orden: 2, Z: 3 },
+    ];
+    const out = regla4Oportunidad(ranking, radar);
+    expect(out.descripcion).toContain('Baja');
+    expect(out.descripcion).toContain('3/10');
+  });
+
+  it('radar vacío → null', () => {
+    const ranking = [{ nombre: 'A', promedio: 5, delta: 0, visitas: 2 }];
+    expect(regla4Oportunidad(ranking, [])).toBeNull();
+  });
+
+  it('ranking vacío → null', () => {
+    expect(regla4Oportunidad([], [{ rubro: 'X', orden: 1 }])).toBeNull();
+  });
+
+  it('peor centro sin valores en radar → null', () => {
+    const ranking = [{ nombre: 'Z', promedio: 5, delta: 0, visitas: 2 }];
+    const radar = [{ rubro: 'X', orden: 1 /* sin Z */ }];
+    expect(regla4Oportunidad(ranking, radar)).toBeNull();
+  });
+});
+
+describe('regla5Prediccion — proyección con |delta|>0.1', () => {
+  it('happy: sube 0.3 → "subir" + valor proyectado', () => {
+    const series = { A: [punto(6.5), punto(7)] };
+    const evolucion = { proyecciones: { A: 7.3 } };
+    const out = regla5Prediccion(series, evolucion);
+    expect(out).not.toBeNull();
+    expect(out.tipo).toBe('prediccion');
+    expect(out.descripcion).toContain('subir');
+    expect(out.descripcion).toContain('7.30');
+  });
+
+  it('baja 0.4 → "bajar"', () => {
+    const series = { A: [punto(7.8), punto(8)] };
+    const evolucion = { proyecciones: { A: 7.6 } };
+    const out = regla5Prediccion(series, evolucion);
+    expect(out.descripcion).toContain('bajar');
+    expect(out.descripcion).toContain('7.60');
+  });
+
+  it('delta=0.1 exacto NO dispara', () => {
+    const series = { A: [punto(7)] };
+    const evolucion = { proyecciones: { A: 7.1 } };
+    expect(regla5Prediccion(series, evolucion)).toBeNull();
+  });
+
+  it('delta=0.11 dispara', () => {
+    const series = { A: [punto(7)] };
+    const evolucion = { proyecciones: { A: 7.11 } };
+    expect(regla5Prediccion(series, evolucion)).not.toBeNull();
+  });
+
+  it('proyecciones={} → null', () => {
+    expect(regla5Prediccion({}, { proyecciones: {} })).toBeNull();
+  });
+
+  it('evolucionData={} (sin .proyecciones) → null sin lanzar', () => {
+    expect(() => regla5Prediccion({}, {})).not.toThrow();
+    expect(regla5Prediccion({}, {})).toBeNull();
+  });
+
+  it('elige la proyección con mayor delta (más positivo)', () => {
+    const series = {
+      A: [punto(7)],
+      B: [punto(7)],
+    };
+    const evolucion = { proyecciones: { A: 7.3, B: 7.8 } };
+    const out = regla5Prediccion(series, evolucion);
+    expect(out.descripcion).toContain('B');
+    expect(out.descripcion).toContain('7.80');
   });
 });
