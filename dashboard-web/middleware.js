@@ -31,7 +31,12 @@ export async function middleware(request) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  const esRutaPublica = pathname.startsWith('/login') || pathname.startsWith('/no-admin');
+  const esRutaPublica =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/no-admin') ||
+    pathname.startsWith('/recuperar-password') ||
+    // /cambiar-password se accede vía link de email (sin sesión completa) o desde /
+    pathname.startsWith('/cambiar-password');
 
   if (!user) {
     if (esRutaPublica) return response;

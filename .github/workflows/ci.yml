@@ -1,0 +1,82 @@
+name: CI
+
+# Corre tests + build en cada push y PR a main/dev.
+# El monorepo tiene 2 sub-proyectos independientes: app móvil (Jest) y dashboard (Vitest+Next.js build).
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  mobile-jest:
+    name: 📱 Mobile · Jest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supervision-cprs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: supervision-cprs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Jest (221 tests)
+        run: npm test -- --no-coverage --ci --reporters=default
+
+  dashboard-vitest:
+    name: 🖥️ Dashboard · Vitest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dashboard-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest (135 tests)
+        run: npm run test:run
+
+  dashboard-build:
+    name: 🖥️ Dashboard · Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dashboard-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (Next.js production)
+        run: npm run build
+        env:
+          # Variables públicas que necesita el build (aunque sean dummy en CI).
+          # Vercel inyecta las reales en producción.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy_for_ci_build_only

@@ -293,6 +293,7 @@ export default function LoginPage() {
               <div className="flex justify-end">
                 <button
                   type="button"
+                  onClick={() => router.push('/recuperar-password')}
                   className="text-sm font-medium text-theme-primary hover:text-theme-primary-hover transition-all duration-300 hover:underline underline-offset-4 hover:translate-x-1"
                 >
                   ¿Olvidaste tu contraseña?

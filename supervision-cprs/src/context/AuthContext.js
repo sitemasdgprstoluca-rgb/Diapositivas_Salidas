@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { getSupabase } from '../utils/supabaseClient';
+import {
+  recuperarPassword as recuperarPasswordHelper,
+  cambiarPassword as cambiarPasswordHelper,
+} from '../utils/authHelpers';
 
 const AuthContext = createContext(null);
 
@@ -102,6 +106,14 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const recuperarPassword = useCallback(async (email) => {
+    return recuperarPasswordHelper(getSupabase(), email);
+  }, []);
+
+  const cambiarPassword = useCallback(async (newPassword) => {
+    return cambiarPasswordHelper(getSupabase(), newPassword);
+  }, []);
+
   const cerrarSesion = useCallback(async () => {
     try {
       const supabase = getSupabase();
@@ -124,6 +136,8 @@ export function AuthProvider({ children }) {
         iniciarSesion,
         registrarse,
         cerrarSesion,
+        recuperarPassword,
+        cambiarPassword,
       }}
     >
       {children}

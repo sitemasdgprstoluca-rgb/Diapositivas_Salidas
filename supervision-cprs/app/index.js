@@ -228,9 +228,17 @@ export default function HomeScreen() {
               <Text style={styles.headerBadgeText}>CPRS</Text>
             </View>
             {supabaseEstaConfigurado() && usuario && (
-              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                <Text style={styles.logoutBtnText}>Salir  ⎋</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={styles.logoutBtn}
+                  onPress={() => router.push('/cambiar-password')}
+                >
+                  <Text style={styles.logoutBtnText}>Contraseña 🔑</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                  <Text style={styles.logoutBtnText}>Salir  ⎋</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
           <Text style={styles.headerTitle}>Supervisión</Text>

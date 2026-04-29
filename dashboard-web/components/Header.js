@@ -52,6 +52,13 @@ export default function Header({ email }) {
 
         <div className="flex items-center gap-3">
           <span className="text-white/80 text-sm hidden md:block">{email}</span>
+          <Link
+            href="/cambiar-password"
+            className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition hidden sm:inline-block"
+            title="Cambiar contraseña"
+          >
+            🔑
+          </Link>
           <button
             onClick={handleLogout}
             className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition"

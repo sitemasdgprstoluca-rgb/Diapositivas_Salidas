@@ -113,6 +113,15 @@ export default function LoginScreen() {
                   ¿No tienes cuenta? <Text style={styles.link}>Regístrate</Text>
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => router.push('/recuperar-password')}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
+                </Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

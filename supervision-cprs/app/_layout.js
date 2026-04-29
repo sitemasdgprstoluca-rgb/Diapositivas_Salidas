@@ -23,7 +23,10 @@ function AuthGuard({ children }) {
     if (!supabaseEstaConfigurado()) return; // modo local sin auth
     if (cargando) return;
 
-    const enRutaAuth = segments[0] === 'login' || segments[0] === 'registro';
+    const enRutaAuth =
+      segments[0] === 'login' ||
+      segments[0] === 'registro' ||
+      segments[0] === 'recuperar-password';
 
     if (!autenticado && !enRutaAuth) {
       router.replace('/login');
@@ -67,6 +70,8 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false, title: 'Inicio', animation: 'fade' }} />
             <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
             <Stack.Screen name="registro" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="recuperar-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="cambiar-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
             <Stack.Screen name="datos-generales" options={{ headerShown: false, title: 'Datos Generales' }} />
             <Stack.Screen name="areas" options={{ headerShown: false, title: 'Rubros' }} />
             <Stack.Screen name="vista-previa" options={{ headerShown: false, title: 'Vista Previa' }} />
