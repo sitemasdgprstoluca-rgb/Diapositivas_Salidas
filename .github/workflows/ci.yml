@@ -1,7 +1,9 @@
 name: CI
 
-# Corre tests + build en cada push y PR a main/dev.
-# El monorepo tiene 2 sub-proyectos independientes: app móvil (Jest) y dashboard (Vitest+Next.js build).
+# Tests + build en cada push y PR a main/dev.
+# El monorepo tiene 2 sub-proyectos independientes:
+#   - supervision-cprs/  → app móvil (Jest 239 tests)
+#   - dashboard-web/     → dashboard (Vitest 135 tests + Next.js build)
 
 on:
   push:
@@ -11,7 +13,7 @@ on:
 
 jobs:
   mobile-jest:
-    name: 📱 Mobile · Jest
+    name: Mobile - Jest
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,11 +31,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Jest (221 tests)
+      - name: Run Jest
         run: npm test -- --no-coverage --ci --reporters=default
 
   dashboard-vitest:
-    name: 🖥️ Dashboard · Vitest
+    name: Dashboard - Vitest
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -51,11 +53,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Vitest (135 tests)
+      - name: Run Vitest
         run: npm run test:run
 
   dashboard-build:
-    name: 🖥️ Dashboard · Build
+    name: Dashboard - Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,3 +82,36 @@ jobs:
           # Vercel inyecta las reales en producción.
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy_for_ci_build_only
+
+  mobile-ota:
+    name: Mobile - OTA Update (production)
+    needs: [mobile-jest, dashboard-vitest, dashboard-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supervision-cprs
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: supervision-cprs/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish OTA update
+        if: env.EXPO_TOKEN != ''
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas update --branch production --message "ci: ${{ github.event.head_commit.message }}" --non-interactive

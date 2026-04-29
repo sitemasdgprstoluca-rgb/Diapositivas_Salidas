@@ -80,6 +80,67 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 
 Vercel: las mismas dos vars como Environment Variables del proyecto.
 
+## Cómo dejar la app móvil "siempre viva"
+
+La app debe quedar funcional en los teléfonos sin que un supervisor tenga que reinstalar el APK cada vez que arregles algo. Cuatro capas:
+
+### 1. OTA Updates (lo principal — fixes en JS al instante)
+
+`expo-updates` está activo. Cualquier cambio que NO toque módulos nativos (UI, lógica JS, fixes de bugs, textos) se publica con:
+
+```powershell
+cd supervision-cprs
+eas update --branch production --message "fix: descripción corta"
+```
+
+Los teléfonos descargan la actualización al abrir la app. Tres canales: `development`, `preview`, `production` (definidos en `eas.json`).
+
+**Cuándo NO sirve OTA — requiere rebuild + reinstall**:
+- Nuevas dependencias nativas (`expo install ...` que añade `*.podspec`)
+- Cambio de permisos en `app.json` (Android: `permissions`, iOS: `infoPlist`)
+- Bump de Expo SDK
+- Cambio de `runtimeVersion` (atado a `appVersion` actualmente — bumpear `version` en `app.json` invalida los OTA viejos)
+
+### 2. CI/CD que dispara OTA al merge a main
+
+`.github/workflows/ci.yml` tiene job `mobile-ota`:
+- Corre **después** de que pasen los 3 jobs de tests (`mobile-jest`, `dashboard-vitest`, `dashboard-build`).
+- Solo se ejecuta en `push` a `main` (no en PRs).
+- Requiere secret `EXPO_TOKEN` en GitHub (Settings → Secrets → Actions).
+  - Genera el token en https://expo.dev/accounts/[user]/settings/access-tokens
+
+Sin el secret, el step `Publish OTA update` se salta gracefully (no rompe el CI).
+
+### 3. Distribución del APK (solo cuando hay rebuild)
+
+```powershell
+cd supervision-cprs
+eas build --platform android --profile preview      # genera APK distribuible
+eas build --platform android --profile production   # genera AAB para Play Store
+```
+
+Para 22 supervisores la opción más sostenible es **Internal Testing en Google Play**: subes el AAB una vez, registras los emails de los supervisores, y reciben futuros rebuilds automáticamente.
+
+### 4. Crash reporting (recomendado, no instalado aún)
+
+Sin esto, si la app crashea en un teléfono nunca te enteras. Sentry para Expo es la opción estándar:
+
+```powershell
+cd supervision-cprs
+npx expo install sentry-expo @sentry/react-native
+```
+
+Luego envuelver la app en `Sentry.wrap(App)` y configurar DSN en `.env`. Crear cuenta gratis en sentry.io (5K eventos/mes gratis bastan para 22 usuarios).
+
+### Resumen del flujo recurrente
+
+| Tipo de cambio | Acción |
+|---|---|
+| Fix de UI/lógica JS | `git push main` → CI dispara OTA → teléfonos se actualizan al abrir |
+| Nueva dependencia nativa o permiso | Bump `version` en `app.json` → `eas build` → distribuir nuevo APK/AAB |
+| Crash en producción | (con Sentry) recibes alerta → fix → OTA |
+| Rotación de credenciales Supabase | Update `.env` y secrets de Vercel → push (dashboard) + bump version + rebuild (móvil) |
+
 ## DISCIPLINAS DE SUPERPOWERS (complementan SDD)
 
 SDD planifica (proposal → spec → design → tasks). Superpowers impone disciplina al ejecutar:
