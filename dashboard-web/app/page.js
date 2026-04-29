@@ -3,6 +3,12 @@ import { crearClienteServidor } from '../lib/supabase-server';
 import Header from '../components/Header';
 import HexKpiCard from '../components/ui/HexKpiCard';
 import HudFrame from '../components/ui/HudFrame';
+import {
+  IconBuilding,
+  IconClipboard,
+  IconChart,
+  IconShield,
+} from '../components/ui/icons';
 import { colorPorCalificacion, formatearFecha } from '../lib/colores';
 
 export const dynamic = 'force-dynamic';
@@ -62,7 +68,7 @@ export default async function HomePage() {
     promGlobal >= 8 ? 'Óptimo' : promGlobal >= 6 ? 'Aceptable' : 'En riesgo';
 
   return (
-    <div className="bg-analytics min-h-screen">
+    <>
       <Header email={user?.email} />
 
       <main className="max-w-7xl mx-auto px-6 py-10">
@@ -87,26 +93,26 @@ export default async function HomePage() {
         {/* KPIs hexagonales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           <HexKpiCard
-            icon="🏛️"
+            icon={IconBuilding}
             value={centros.length}
             label="Centros evaluados"
             tone="guinda"
           />
           <HexKpiCard
-            icon="📋"
+            icon={IconClipboard}
             value={totalSups}
             label="Total supervisiones"
             tone="dorado"
           />
           <HexKpiCard
-            icon="📊"
+            icon={IconChart}
             value={promGlobal.toFixed(2)}
             label="Promedio global"
             tone={promGlobal >= 8 ? 'dorado' : 'guinda'}
             hint={cumplimientoTexto}
           />
           <HexKpiCard
-            icon="🎯"
+            icon={IconShield}
             value={centros.filter((c) => (c.promedioActual ?? 0) >= 8).length}
             label="Centros en óptimo"
             tone="neutro"
@@ -222,6 +228,6 @@ export default async function HomePage() {
           )}
         </HudFrame>
       </main>
-    </div>
+    </>
   );
 }

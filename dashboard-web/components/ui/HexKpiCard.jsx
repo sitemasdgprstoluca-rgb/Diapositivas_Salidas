@@ -3,23 +3,25 @@
 /**
  * HexKpiCard — Tarjeta KPI con forma hexagonal estilo HUD institucional.
  *
- * Visual: clip-path polygon hexagonal, fondo radial dorado/vino, halo de icono,
- * número grande con glow, label institucional debajo.
+ * El icono se acepta como:
+ *  - Componente React (ej: <IconBuilding />) — preferido, line icons SVG
+ *  - String (ej: "🏛️") — fallback emoji
  *
  * Props:
- *  - value: número o string a destacar (ej. "8.45", "126", "92%")
- *  - label: descripción corta (ej. "Promedio general")
- *  - icon: emoji o nodo React renderizado dentro del halo
- *  - tone: "guinda" | "dorado" | "neutro" — ajusta el gradiente
+ *  - value: número o string a destacar
+ *  - label: descripción corta
+ *  - icon: componente React o string
+ *  - tone: "guinda" | "dorado" | "neutro"
  *  - hint: línea pequeña adicional bajo el label (opcional)
  */
-export default function HexKpiCard({ value, label, icon, tone = 'guinda', hint }) {
+export default function HexKpiCard({ value, label, icon: Icon, tone = 'guinda', hint }) {
   const palette = {
     guinda: {
       glow: 'rgba(159, 34, 65, 0.45)',
       ring: 'rgba(159, 34, 65, 0.6)',
       iconBg: 'linear-gradient(135deg, #9F2241 0%, #5C2E37 100%)',
       iconRing: 'rgba(182, 149, 102, 0.55)',
+      iconColor: '#FBF6EB',
       valueClass: 'text-white',
     },
     dorado: {
@@ -27,6 +29,7 @@ export default function HexKpiCard({ value, label, icon, tone = 'guinda', hint }
       ring: 'rgba(182, 149, 102, 0.7)',
       iconBg: 'linear-gradient(135deg, #B69566 0%, #9B6F4A 100%)',
       iconRing: 'rgba(255, 255, 255, 0.35)',
+      iconColor: '#3D1520',
       valueClass: 'text-white',
     },
     neutro: {
@@ -34,15 +37,22 @@ export default function HexKpiCard({ value, label, icon, tone = 'guinda', hint }
       ring: 'rgba(255, 255, 255, 0.25)',
       iconBg: 'linear-gradient(135deg, #2a1b22 0%, #14080c 100%)',
       iconRing: 'rgba(182, 149, 102, 0.4)',
+      iconColor: '#DDC9A3',
       valueClass: 'text-dorado-200',
     },
   };
 
   const p = palette[tone] || palette.guinda;
 
+  // Permitir tanto componentes como strings (emoji)
+  const iconNode = Icon
+    ? typeof Icon === 'function'
+      ? <Icon width={20} height={20} style={{ color: p.iconColor }} />
+      : <span className="text-base" style={{ color: p.iconColor }}>{Icon}</span>
+    : null;
+
   return (
     <div className="relative group">
-      {/* Halo exterior */}
       <div
         className="absolute inset-0 blur-2xl opacity-50 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none"
         style={{
@@ -50,7 +60,6 @@ export default function HexKpiCard({ value, label, icon, tone = 'guinda', hint }
         }}
       />
 
-      {/* Card hexagonal */}
       <div
         className="relative h-48 px-6 py-7 flex flex-col items-center justify-center text-center transition-transform duration-300 group-hover:-translate-y-1"
         style={{
@@ -60,17 +69,16 @@ export default function HexKpiCard({ value, label, icon, tone = 'guinda', hint }
           boxShadow: `0 0 0 1px ${p.ring} inset, 0 0 32px -8px ${p.glow}`,
         }}
       >
-        {/* Icono con halo */}
-        {icon && (
+        {iconNode && (
           <div className="relative mb-2">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+              className="w-11 h-11 rounded-full flex items-center justify-center"
               style={{
                 background: p.iconBg,
-                boxShadow: `0 0 0 2px ${p.iconRing}, 0 0 20px -2px ${p.glow}`,
+                boxShadow: `0 0 0 1px ${p.iconRing}, 0 0 20px -2px ${p.glow}`,
               }}
             >
-              <span className="text-white drop-shadow">{icon}</span>
+              {iconNode}
             </div>
           </div>
         )}

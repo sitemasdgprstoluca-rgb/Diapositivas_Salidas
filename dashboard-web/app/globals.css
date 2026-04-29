@@ -11,11 +11,23 @@ body {
 }
 
 body {
-  background: #FAF8F5;
-  color: #1a1a1a;
+  background:
+    radial-gradient(ellipse at 20% 15%, rgba(182, 149, 102, 0.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 85%, rgba(159, 34, 65, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(74, 26, 46, 0.35) 0%, transparent 60%),
+    linear-gradient(180deg, #0f0608 0%, #1a0b10 50%, #0a0507 100%);
+  background-attachment: fixed;
+  color: #f8fafc;
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+/* Páginas con fondo claro (login, recuperar) usan esta clase para resetear */
+body.bg-light {
+  background: #FAF8F5;
+  color: #1a1a1a;
 }
 
 /* === Tipografía institucional con tabular-nums para datos === */

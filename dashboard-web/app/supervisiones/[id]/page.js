@@ -5,6 +5,13 @@ import Header from '../../../components/Header';
 import HexKpiCard from '../../../components/ui/HexKpiCard';
 import HudFrame from '../../../components/ui/HudFrame';
 import GaugeCard from '../../../components/ui/GaugeCard';
+import {
+  IconClipboard,
+  IconCheck,
+  IconBan,
+  IconCamera,
+  IconTarget,
+} from '../../../components/ui/icons';
 import { colorPorCalificacion, formatearFecha } from '../../../lib/colores';
 
 export const dynamic = 'force-dynamic';
@@ -68,7 +75,7 @@ export default async function SupervisionDetalle({ params }) {
   const totalFotos = rubros.reduce((acc, r) => acc + (r.fotos?.length || 0), 0);
 
   return (
-    <div className="bg-analytics min-h-screen">
+    <>
       <Header email={user?.email} />
       <main className="max-w-7xl mx-auto px-6 py-10">
         <Link
@@ -102,7 +109,7 @@ export default async function SupervisionDetalle({ params }) {
             title="Promedio general"
             subtitle="calificación final de la supervisión"
             tone="dark"
-            badge={<span className="text-base">🎯</span>}
+            badge={<IconTarget className="text-dorado-300" />}
           >
             <div className="py-4">
               <GaugeCard
@@ -115,25 +122,25 @@ export default async function SupervisionDetalle({ params }) {
 
           <div className="lg:col-span-2 grid grid-cols-2 gap-6">
             <HexKpiCard
-              icon="📋"
+              icon={IconClipboard}
               value={rubros.length}
               label="Rubros totales"
               tone="guinda"
             />
             <HexKpiCard
-              icon="✅"
+              icon={IconCheck}
               value={evaluados.length}
               label="Evaluados"
               tone="dorado"
             />
             <HexKpiCard
-              icon="⊘"
+              icon={IconBan}
               value={noAplican.length}
               label="No aplican"
               tone="neutro"
             />
             <HexKpiCard
-              icon="📸"
+              icon={IconCamera}
               value={totalFotos}
               label="Fotos"
               tone="guinda"
@@ -301,6 +308,6 @@ export default async function SupervisionDetalle({ params }) {
           })}
         </div>
       </main>
-    </div>
+    </>
   );
 }

@@ -5,6 +5,15 @@ import HistoricoChart from '../../../components/HistoricoChart';
 import HexKpiCard from '../../../components/ui/HexKpiCard';
 import HudFrame from '../../../components/ui/HudFrame';
 import GaugeCard from '../../../components/ui/GaugeCard';
+import {
+  IconTarget,
+  IconPin,
+  IconTrendUp,
+  IconTrendDown,
+  IconClipboard,
+  IconLineChart,
+  IconPuzzle,
+} from '../../../components/ui/icons';
 import { colorPorCalificacion, formatearFecha } from '../../../lib/colores';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +61,7 @@ export default async function CentroPage({ params }) {
 
   if (supervisiones.length === 0) {
     return (
-      <div className="bg-analytics min-h-screen">
+      <>
         <Header email={user?.email} />
         <main className="max-w-7xl mx-auto px-6 py-12">
           <HudFrame tone="dark" className="text-center py-16">
@@ -68,7 +77,7 @@ export default async function CentroPage({ params }) {
             </Link>
           </HudFrame>
         </main>
-      </div>
+      </>
     );
   }
 
@@ -113,7 +122,7 @@ export default async function CentroPage({ params }) {
   rubrosArr.sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
   return (
-    <div className="bg-analytics min-h-screen">
+    <>
       <Header email={user?.email} />
       <main className="max-w-7xl mx-auto px-6 py-10">
         <Link
@@ -141,28 +150,28 @@ export default async function CentroPage({ params }) {
         {/* KPIs hexagonales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           <HexKpiCard
-            icon="🎯"
+            icon={IconTarget}
             value={Number(ultima.promedio_general || 0).toFixed(2)}
             label="Promedio actual"
             tone={ultima.promedio_general >= 8 ? 'dorado' : 'guinda'}
             hint={formatearFecha(ultima.fecha_hora_supervision)}
           />
           <HexKpiCard
-            icon="📍"
+            icon={IconPin}
             value={Number(primera.promedio_general || 0).toFixed(2)}
             label="Primera medición"
             tone="neutro"
             hint={formatearFecha(primera.fecha_hora_supervision)}
           />
           <HexKpiCard
-            icon={mejora >= 0 ? '📈' : '📉'}
+            icon={mejora >= 0 ? IconTrendUp : IconTrendDown}
             value={`${mejora > 0 ? '+' : ''}${mejora.toFixed(2)}`}
             label="Mejora total"
             tone={mejora >= 0 ? 'dorado' : 'guinda'}
             hint="primera vs última"
           />
           <HexKpiCard
-            icon="📋"
+            icon={IconClipboard}
             value={`${rubrosArr.length}/15`}
             label="Rubros evaluados"
             tone="guinda"
@@ -176,7 +185,7 @@ export default async function CentroPage({ params }) {
             title="Promedio actual"
             subtitle="última supervisión finalizada"
             tone="dark"
-            badge={<span className="text-base">🎯</span>}
+            badge={<IconTarget className="text-dorado-300" />}
           >
             <div className="py-4">
               <GaugeCard
@@ -191,7 +200,7 @@ export default async function CentroPage({ params }) {
             title="Evolución del promedio general"
             subtitle="comportamiento histórico de las visitas"
             tone="dark"
-            badge={<span className="text-base">📈</span>}
+            badge={<IconLineChart className="text-dorado-300" />}
             className="lg:col-span-2"
           >
             <HistoricoChart datos={datosGrafica} />
@@ -203,7 +212,7 @@ export default async function CentroPage({ params }) {
           title="Supervisiones realizadas"
           subtitle="click para ver fotos, criterios y observaciones"
           tone="dark"
-          badge={<span className="text-base">📋</span>}
+          badge={<IconClipboard className="text-dorado-300" />}
           className="mb-8"
         >
           <div className="-m-5">
@@ -256,7 +265,7 @@ export default async function CentroPage({ params }) {
           title="Desempeño por rubro"
           subtitle="calificación actual vs primera medición"
           tone="dark"
-          badge={<span className="text-base">🧩</span>}
+          badge={<IconPuzzle className="text-dorado-300" />}
         >
           <div className="overflow-x-auto -m-5">
             <table className="w-full data-table">
@@ -337,6 +346,6 @@ export default async function CentroPage({ params }) {
           </div>
         </HudFrame>
       </main>
-    </div>
+    </>
   );
 }

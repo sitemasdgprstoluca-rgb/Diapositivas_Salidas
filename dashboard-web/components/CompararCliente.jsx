@@ -8,6 +8,14 @@ import InsightsIA from './analytics/InsightsIA';
 import HexKpiCard from './ui/HexKpiCard';
 import HudFrame from './ui/HudFrame';
 import {
+  IconBuilding,
+  IconRadar,
+  IconClipboard,
+  IconBrain,
+  IconTrophy,
+  IconLineChart,
+} from './ui/icons';
+import {
   calcularRanking,
   generarInsights,
   generarSeriesPorCentro,
@@ -63,25 +71,25 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
       {/* KPIs hexagonales premium */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
         <HexKpiCard
-          icon="🏛️"
+          icon={IconBuilding}
           value={`${seleccionados.length}/${centrosDisponibles.length}`}
           label="Centros seleccionados"
           tone="guinda"
         />
         <HexKpiCard
-          icon="📊"
+          icon={IconRadar}
           value={`${radarData.length}/15`}
           label="Rubros analizados"
           tone="dorado"
         />
         <HexKpiCard
-          icon="📋"
+          icon={IconClipboard}
           value={totalVisitas}
           label="Supervisiones"
           tone="neutro"
         />
         <HexKpiCard
-          icon="🧠"
+          icon={IconBrain}
           value={insights.length}
           label="Insights IA"
           tone="dorado"
@@ -145,7 +153,7 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
               title="Ranking general"
               subtitle="ordenado por promedio · delta vs primera visita"
               tone="dark"
-              badge={<span className="text-base">🏆</span>}
+              badge={<IconTrophy className="text-dorado-300" />}
             >
               <RankingGeneral centros={ranking} />
             </HudFrame>
@@ -154,7 +162,7 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
               title="Insights de IA"
               subtitle="patrones detectados automáticamente"
               tone="dark"
-              badge={<span className="text-base">🧠</span>}
+              badge={<IconBrain className="text-dorado-300" />}
             >
               <InsightsIA insights={insights} />
             </HudFrame>
@@ -165,7 +173,7 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
             title="Desempeño por rubro"
             subtitle="última supervisión por centro"
             tone="dark"
-            badge={<span className="text-base">📊</span>}
+            badge={<IconRadar className="text-dorado-300" />}
             className="lg:col-span-1"
           >
             <RadarComparativo datos={radarData} centros={seleccionados} />
@@ -176,7 +184,7 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
             title="Evolución + predicción"
             subtitle="regresión lineal sobre las últimas visitas"
             tone="dark"
-            badge={<span className="text-base">📈</span>}
+            badge={<IconLineChart className="text-dorado-300" />}
             className="lg:col-span-1"
           >
             <EvolucionConPrediccion

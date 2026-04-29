@@ -39,7 +39,7 @@ export default async function CompararPage() {
   const { user, centrosDisponibles, todasSups, rubrosPorSup } = await cargar();
 
   return (
-    <div className="bg-analytics min-h-screen">
+    <>
       <Header email={user?.email} />
 
       <main className="max-w-7xl mx-auto px-6 py-10">
@@ -78,6 +78,6 @@ export default async function CompararPage() {
           />
         )}
       </main>
-    </div>
+    </>
   );
 }
