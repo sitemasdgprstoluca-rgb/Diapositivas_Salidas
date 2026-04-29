@@ -8,11 +8,11 @@ import type { Config } from 'tailwindcss';
  *   Accent (Dorado Pantone 465 C):  #B69566
  *
  * Reglas:
- *   ✓ Tipografía: Inter (system-ui fallback)
- *   ✓ Border radius: lg (8px), xl (12px), 2xl (16px) — nunca cuadrado
- *   ✓ Sombras: soft / card / floating (más suaves que las defaults de Tailwind)
- *   ✓ Animaciones: pulse-slow 3s, fade-in 0.5s, slide-up 0.3s
- *   ✓ Ring 1px sobre border 1px (outline suave > línea dura)
+ *   - Tipografía: Inter (system-ui fallback)
+ *   - Border radius: lg (8px), xl (12px), 2xl (16px) — nunca cuadrado
+ *   - Sombras: soft / card / floating (más suaves que las defaults de Tailwind)
+ *   - Animaciones: pulse-slow 3s, fade-in 0.5s, slide-up 0.3s
+ *   - Ring 1px sobre border 1px (outline suave > línea dura)
  */
 const config: Config = {
   content: [
@@ -29,9 +29,9 @@ const config: Config = {
           200: '#E0A3B2',
           300: '#CC7A8F',
           400: '#B94D69',
-          500: '#9F2241', // ★ Primary — vino corporativo
+          500: '#9F2241', // Primary — vino corporativo
           600: '#8B1D38',
-          700: '#5C2E37', // ★ Secondary — vino oscuro
+          700: '#5C2E37', // Secondary — vino oscuro
           800: '#3D1520',
           900: '#2A0E16',
         },
@@ -41,7 +41,7 @@ const config: Config = {
           200: '#EBD8A6',
           300: '#DDC9A3',
           400: '#C9B07F',
-          500: '#B69566', // ★ Accent — dorado corporativo
+          500: '#B69566', // Accent — dorado corporativo
           600: '#9B6F4A',
           700: '#7A5638',
           800: '#5A3F28',

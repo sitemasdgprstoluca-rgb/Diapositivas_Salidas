@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/theme';
 import { formatearFechaCompleta, formatearHora } from '../utils/dateUtils';
 
@@ -86,9 +87,11 @@ const DateTimeInput = ({
         <Text style={[styles.inputText, !value && styles.placeholder]}>
           {getDisplayValue()}
         </Text>
-        <Text style={styles.icon}>
-          {mode === 'time' ? '🕐' : '📅'}
-        </Text>
+        <Ionicons
+          name={mode === 'time' ? 'time-outline' : 'calendar-outline'}
+          size={20}
+          color={COLORS.textSecondary || '#666'}
+        />
       </TouchableOpacity>
       
       {error && <Text style={styles.errorText}>{error}</Text>}

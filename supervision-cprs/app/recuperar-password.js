@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
 
@@ -102,7 +103,7 @@ export default function RecuperarPasswordScreen() {
                 </>
               ) : (
                 <View style={styles.successBox}>
-                  <Text style={styles.successIcon}>📬</Text>
+                  <Ionicons name="mail-outline" size={48} color={COLORS.primary} style={{ marginBottom: 12 }} />
                   <Text style={styles.successTitle}>Revisa tu correo</Text>
                   <Text style={styles.successText}>
                     Si el email <Text style={{ fontWeight: '700' }}>{email}</Text> está

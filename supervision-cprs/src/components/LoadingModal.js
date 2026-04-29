@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 
 const MENSAJES_PPTX = [
@@ -70,9 +71,11 @@ export default function LoadingModal({ visible, tipo = 'pptx' }) {
       <View style={styles.overlay}>
         <View style={styles.container}>
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>
-              {tipo === 'pdf' ? '📄' : '📊'}
-            </Text>
+            <Ionicons
+              name={tipo === 'pdf' ? 'document-text-outline' : 'bar-chart-outline'}
+              size={48}
+              color={COLORS.primary}
+            />
           </View>
           
           <Text style={styles.titulo}>

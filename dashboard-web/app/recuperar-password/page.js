@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { crearClienteNavegador } from '../../lib/supabase-browser';
+import { IconMail } from '../../components/ui/icons';
 
 export default function RecuperarPasswordPage() {
   const router = useRouter();
@@ -84,7 +85,9 @@ export default function RecuperarPasswordPage() {
           </form>
         ) : (
           <div className="bg-white rounded-2xl p-8 shadow-2xl text-center">
-            <div className="text-6xl mb-3">📬</div>
+            <div className="text-institucional-500 mb-5 flex justify-center">
+              <IconMail width={56} height={56} strokeWidth={1.8} />
+            </div>
             <h2 className="text-2xl font-extrabold text-gray-900">Revisa tu correo</h2>
             <p className="text-gray-600 mt-3 leading-relaxed">
               Si el email <span className="font-bold">{email}</span> está registrado, recibirás

@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { Button, DateTimeInput, Select } from '../src/components';
 import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
 import { validarDatosGenerales } from '../src/utils/validation';
 import { LISTA_CPRS } from '../src/constants/data';
+import { obtenerCentros } from '../src/utils/centrosCatalogo';
 
 export default function DatosGeneralesScreen() {
   const router = useRouter();
@@ -34,6 +36,16 @@ export default function DatosGeneralesScreen() {
 
   const [errores, setErrores] = useState({});
   const [guardando, setGuardando] = useState(false);
+  const [centros, setCentros] = useState(LISTA_CPRS);
+
+  // Cargar catálogo de centros (BD con fallback a constant local)
+  useEffect(() => {
+    let cancelado = false;
+    obtenerCentros().then((lista) => {
+      if (!cancelado) setCentros(lista);
+    });
+    return () => { cancelado = true; };
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -118,8 +130,8 @@ export default function DatosGeneralesScreen() {
       'Selecciona una opción para agregar la imagen de la entrada principal del centro',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: '📷 Tomar foto', onPress: tomarFotoCentro },
-        { text: '🖼️ Galería', onPress: seleccionarImagenCentro },
+        { text: 'Tomar foto', onPress: tomarFotoCentro },
+        { text: 'Galería', onPress: seleccionarImagenCentro },
       ]
     );
   };
@@ -211,7 +223,9 @@ export default function DatosGeneralesScreen() {
         >
           <View style={styles.formCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardIcon}>📋</Text>
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="clipboard-outline" size={22} color={COLORS.primary} />
+              </View>
               <View>
                 <Text style={styles.cardTitle}>Información del C.P.R.S.</Text>
                 <Text style={styles.cardSubtitle}>Completa todos los campos</Text>
@@ -222,7 +236,7 @@ export default function DatosGeneralesScreen() {
               <Select
                 label="Nombre del C.P.R.S."
                 value={datosGenerales.nombreCprs}
-                options={LISTA_CPRS}
+                options={centros}
                 onSelect={(value) => handleChange('nombreCprs', value)}
                 placeholder="Seleccionar C.P.R.S..."
                 error={errores.nombreCprs}
@@ -266,7 +280,9 @@ export default function DatosGeneralesScreen() {
           {/* Sección de imagen del centro */}
           <View style={styles.formCard}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardIcon}>📸</Text>
+              <View style={styles.cardIconWrap}>
+                <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
+              </View>
               <View>
                 <Text style={styles.cardTitle}>Imagen del Centro</Text>
                 <Text style={styles.cardSubtitle}>Entrada principal del C.P.R.S.</Text>
@@ -291,7 +307,7 @@ export default function DatosGeneralesScreen() {
                 </View>
               ) : (
                 <View style={styles.imagePlaceholder}>
-                  <Text style={styles.imagePlaceholderIcon}>🏛️</Text>
+                  <Ionicons name="business-outline" size={48} color={COLORS.primary} style={{ marginBottom: 8 }} />
                   <Text style={styles.imagePlaceholderText}>Agregar imagen de la entrada</Text>
                   <Text style={styles.imagePlaceholderSubtext}>Toca para seleccionar o tomar foto</Text>
                 </View>
@@ -300,7 +316,7 @@ export default function DatosGeneralesScreen() {
           </View>
 
           <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>💡</Text>
+            <Ionicons name="bulb-outline" size={20} color={COLORS.primary} style={{ marginRight: 10, marginTop: 2 }} />
             <Text style={styles.infoText}>
               La fecha y hora se precargan automáticamente. Puedes modificarlas si la supervisión fue en otro momento.
             </Text>

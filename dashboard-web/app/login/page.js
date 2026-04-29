@@ -4,9 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { crearClienteNavegador } from '../../lib/supabase-browser';
 
-/* ═══════════════════════════════════════════════════════════════════
-   🎨 Partículas flotantes animadas
-   ═══════════════════════════════════════════════════════════════════ */
+/* Partículas flotantes animadas */
 function FloatingParticles() {
   const particles = Array.from({ length: 30 }, (_, i) => {
     const size = Math.random() * 12 + 6;
@@ -52,9 +50,7 @@ function FloatingParticles() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   🌟 Anillos concéntricos animados
-   ═══════════════════════════════════════════════════════════════════ */
+/* Anillos concéntricos animados */
 function AnimatedRings() {
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
@@ -81,9 +77,7 @@ function AnimatedRings() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   ✨ Input Premium con icon gradient al enfocar
-   ═══════════════════════════════════════════════════════════════════ */
+/* Input premium con icon gradient al enfocar */
 function PremiumInput({ icon: Icon, label, error, type, onToggle, showPassword, ...props }) {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -139,9 +133,7 @@ function PremiumInput({ icon: Icon, label, error, type, onToggle, showPassword, 
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   🎯 Íconos SVG inline (matching react-icons/fa)
-   ═══════════════════════════════════════════════════════════════════ */
+/* Iconos SVG inline (matching react-icons/fa) */
 const IconUser = () => (
   <svg width="16" height="16" viewBox="0 0 448 512" fill="currentColor">
     <path d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C79.8 304 0 383.8 0 482.3 0 498.7 13.3 512 29.7 512H418.3c16.4 0 29.7-13.3 29.7-29.7 0-98.5-79.8-178.3-178.3-178.3H178.3z" />
@@ -183,9 +175,7 @@ const IconRoute = () => (
   </svg>
 );
 
-/* ═══════════════════════════════════════════════════════════════════
-   🔐 Login page (Supabase)
-   ═══════════════════════════════════════════════════════════════════ */
+/* Login page (Supabase) */
 export default function LoginPage() {
   const router = useRouter();
   const supabase = crearClienteNavegador();
@@ -259,8 +249,22 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {errorMessage && (
                 <div className="animate-shake rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-red-500 text-sm">⚠️</span>
+                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 3l10 18H2L12 3z" />
+                      <path d="M12 10v5" />
+                      <circle cx="12" cy="18" r="0.6" fill="currentColor" />
+                    </svg>
                   </div>
                   <p className="text-sm text-red-700 font-medium">{errorMessage}</p>
                 </div>

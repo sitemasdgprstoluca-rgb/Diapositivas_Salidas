@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { useAuth } from '../src/context/AuthContext';
 import { useSync } from '../src/context/SyncProvider';
@@ -85,7 +86,7 @@ export default function HomeScreen() {
 
   const handleEliminar = (supervision) => {
     Alert.alert(
-      '🗑️ Eliminar supervisión',
+      'Eliminar supervisión',
       `¿Estás seguro de eliminar la supervisión de "${supervision.datosGenerales?.nombreCprs || 'Sin nombre'}"?\n\nEsta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -142,7 +143,7 @@ export default function HomeScreen() {
             {/* Info de fecha */}
             <View style={styles.cardMeta}>
               <View style={styles.metaItem}>
-                <Text style={styles.metaIcon}>📅</Text>
+                <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
                 <Text style={styles.metaText}>
                   {formatearFechaDisplay(item.datosGenerales?.fechaHoraSupervision || item.fechaCreacion)}
                 </Text>
@@ -153,7 +154,7 @@ export default function HomeScreen() {
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <View style={styles.statIconContainer}>
-                  <Text style={styles.statIcon}>📍</Text>
+                  <Ionicons name="location-outline" size={16} color={COLORS.primary} />
                 </View>
                 <Text style={styles.statNumber}>{numAreas}</Text>
                 <Text style={styles.statLabel}>Área{numAreas !== 1 ? 's' : ''}</Text>
@@ -161,7 +162,7 @@ export default function HomeScreen() {
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <View style={styles.statIconContainer}>
-                  <Text style={styles.statIcon}>📷</Text>
+                  <Ionicons name="camera-outline" size={16} color={COLORS.primary} />
                 </View>
                 <Text style={styles.statNumber}>{numFotos}</Text>
                 <Text style={styles.statLabel}>Foto{numFotos !== 1 ? 's' : ''}</Text>
@@ -179,11 +180,11 @@ export default function HomeScreen() {
                 </Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => handleEliminar(item)}
               >
-                <Text style={styles.deleteButtonIcon}>🗑️</Text>
+                <Ionicons name="trash-outline" size={18} color={COLORS.error || '#dc2626'} />
               </TouchableOpacity>
             </View>
           </View>
@@ -195,7 +196,7 @@ export default function HomeScreen() {
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Text style={styles.emptyIcon}>📋</Text>
+        <Ionicons name="clipboard-outline" size={48} color={COLORS.primary} />
       </View>
       <Text style={styles.emptyTitle}>Sin supervisiones</Text>
       <Text style={styles.emptySubtitle}>
@@ -233,7 +234,8 @@ export default function HomeScreen() {
                   style={styles.logoutBtn}
                   onPress={() => router.push('/cambiar-password')}
                 >
-                  <Text style={styles.logoutBtnText}>Contraseña 🔑</Text>
+                  <Ionicons name="key-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
+                  <Text style={styles.logoutBtnText}>Contraseña</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                   <Text style={styles.logoutBtnText}>Salir  ⎋</Text>
@@ -339,6 +341,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   logoutBtnText: {
     color: COLORS.white,

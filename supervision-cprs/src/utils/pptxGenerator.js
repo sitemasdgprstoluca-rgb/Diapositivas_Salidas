@@ -25,10 +25,12 @@ const colorHexCalificacion = (cal) => {
 // Detectar si estamos en web
 const isWeb = Platform.OS === 'web';
 
-// Importar imágenes de fondo
+// Importar imágenes de fondo (también reexportadas para pdfGenerator)
 import fondoPortada from '../../assets/backgrounds/portada.png';
 import fondoGeneral from '../../assets/backgrounds/general.png';
 import fondoCierre from '../../assets/backgrounds/cierre.png';
+
+export { fondoPortada, fondoGeneral, fondoCierre };
 
 // Colores institucionales exactos
 const COLORS = {
@@ -159,8 +161,9 @@ const imagenABase64 = async (uri) => {
 
 /**
  * Carga un asset y lo convierte a base64
+ * Exportado para reutilizar desde pdfGenerator (mismos fondos institucionales).
  */
-const cargarAssetBase64 = async (assetModule) => {
+export const cargarAssetBase64 = async (assetModule) => {
   try {
     if (isWeb) {
       // En web, los assets son URLs directas
@@ -780,7 +783,7 @@ export const generarPPTX = async (supervision) => {
 
           criterios.forEach((crit, idx) => {
             const yCrit = yActual + 0.28 + idx * alturaPorCriterio;
-            const simbolo = crit.cumple === true ? '✔' : crit.cumple === false ? '✘' : '—';
+            const simbolo = crit.cumple === true ? 'SÍ' : crit.cumple === false ? 'NO' : '—';
             const colorSim = crit.cumple === true ? '2E7D32' : crit.cumple === false ? 'C62828' : '888888';
 
             slideArea.addText(simbolo, {

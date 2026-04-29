@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/theme';
 
 /**
@@ -36,7 +37,9 @@ class ErrorBoundary extends React.Component {
     return (
       <View style={styles.root}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.emoji}>⚠️</Text>
+          <View style={styles.iconWrap}>
+            <Ionicons name="alert-circle-outline" size={56} color={COLORS.error || '#dc2626'} />
+          </View>
           <Text style={styles.title}>Algo salió mal</Text>
           <Text style={styles.subtitle}>
             La app tuvo un error pero no se cerró. Puedes reintentar o reiniciar la app.
@@ -79,7 +82,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
-  emoji: { fontSize: 48, textAlign: 'center', marginBottom: 8 },
+  iconWrap: { alignItems: 'center', marginBottom: 8 },
   title: {
     fontSize: 24,
     fontWeight: '800',

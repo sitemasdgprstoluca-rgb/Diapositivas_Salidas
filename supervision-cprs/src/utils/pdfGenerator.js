@@ -1,30 +1,50 @@
+/**
+ * Genera el PDF como una replica fiel de la presentación PPTX:
+ *   - Misma proporción de slide 16:9 (13.333 x 7.5 in = 1280 x 720 px @ 96dpi)
+ *   - Mismas imágenes de fondo institucionales (portada / general / cierre)
+ *   - Misma paleta de colores (guinda #691C32, dorado #BC955C)
+ *   - Misma jerarquía de slides: Portada → Información → Rubros → Cierre
+ *   - Coordenadas pixel-exactas al PPTX (1 in = 96 px)
+ *
+ * El usuario obtiene un PDF que se ve idéntico al PPTX cuando lo abre.
+ */
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
-import { 
-  formatearFechaCompleta, 
-  formatearFechaDiaMes, 
+import {
+  formatearFechaCompleta,
+  formatearFechaDiaMes,
   formatearHora,
-  generarNombreArchivo 
 } from './dateUtils';
+import {
+  cargarAssetBase64,
+  fondoPortada,
+  fondoGeneral,
+  fondoCierre,
+} from './pptxGenerator';
 
-// Detectar si estamos en web
 const isWeb = Platform.OS === 'web';
 
-// Colores de la plantilla
+// Paleta institucional (igual al PPTX)
 const COLORS = {
-  primary: '#8A2035',
-  secondary: '#783039',
-  accent: '#D4A94C',
-  white: '#FFFFFF',
-  lightGray: '#E3E9ED',
-  text: '#333333',
+  guinda: '#691C32',
+  dorado: '#BC955C',
+  blanco: '#FFFFFF',
+  negro: '#000000',
+  text: '#2A0E16',
 };
 
-/**
- * Helper para timeout en promesas
- */
+// Slide widescreen 16:9: 13.333 x 7.5 in @ 96dpi = 1280 x 720 px
+const SLIDE_W_IN = 13.333;
+const SLIDE_H_IN = 7.5;
+const PX_PER_IN = 96;
+const SLIDE_W = Math.round(SLIDE_W_IN * PX_PER_IN); // 1280
+const SLIDE_H = Math.round(SLIDE_H_IN * PX_PER_IN); // 720
+
+// Convierte coordenadas en pulgadas (mismas que usa pptxGenerator) a pixeles del HTML
+const inToPx = (inches) => Math.round(inches * PX_PER_IN);
+
 const withTimeout = (promise, ms, errorMsg = 'Timeout') => {
   let timeoutId;
   const timeoutPromise = new Promise((_, reject) => {
@@ -33,15 +53,9 @@ const withTimeout = (promise, ms, errorMsg = 'Timeout') => {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 };
 
-/**
- * FileReader con timeout para web
- */
-const readBlobAsDataURLWithTimeout = (blob, timeoutMs = 30000) => {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error('Timeout leyendo blob'));
-    }, timeoutMs);
-    
+const readBlobAsDataURLWithTimeout = (blob, timeoutMs = 30000) =>
+  new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error('Timeout leyendo blob')), timeoutMs);
     const reader = new FileReader();
     reader.onloadend = () => {
       clearTimeout(timeoutId);
@@ -53,53 +67,24 @@ const readBlobAsDataURLWithTimeout = (blob, timeoutMs = 30000) => {
     };
     reader.readAsDataURL(blob);
   });
-};
 
-/**
- * Convierte una imagen local a base64 para incrustar en HTML
- * @param {string} uri - URI de la imagen
- * @returns {Promise<string>} Data URL de la imagen
- */
 const imagenADataURL = async (uri) => {
   try {
     if (!uri) return null;
-    console.log('[PDF] Convirtiendo imagen:', uri.substring(Math.max(0, uri.length - 30)));
-    
     if (isWeb) {
-      // En web, si ya es un data URL o blob URL, usarlo directamente
-      if (uri.startsWith('data:')) {
-        return uri;
-      }
+      if (uri.startsWith('data:')) return uri;
       if (uri.startsWith('blob:')) {
-        // Convertir blob URL a data URL con timeout
-        try {
-          const response = await withTimeout(fetch(uri), 15000, 'Timeout fetch blob');
-          const blob = await response.blob();
-          return await readBlobAsDataURLWithTimeout(blob, 20000);
-        } catch (e) {
-          console.log('[PDF] Error convirtiendo blob:', e.message);
-          return null;
-        }
-      }
-      // Si es una URL normal, intentar cargarla
-      try {
-        const response = await withTimeout(fetch(uri), 15000, 'Timeout fetch URL');
+        const response = await withTimeout(fetch(uri), 15000, 'Timeout fetch blob');
         const blob = await response.blob();
         return await readBlobAsDataURLWithTimeout(blob, 20000);
-      } catch (e) {
-        console.log('[PDF] Error cargando URL:', e.message);
-        return null; // Retornar null en vez de la URL si falla
       }
+      return uri;
     }
-    
     const base64 = await withTimeout(
-      FileSystem.readAsStringAsync(uri, {
-        encoding: 'base64',
-      }),
-      15000,
+      FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 }),
+      30000,
       'Timeout leyendo imagen para PDF'
     );
-    console.log('[PDF] Imagen convertida, tamaño:', Math.round(base64.length / 1024), 'KB');
     return `data:image/jpeg;base64,${base64}`;
   } catch (error) {
     console.log('[PDF] Error convirtiendo imagen:', error.message);
@@ -107,314 +92,312 @@ const imagenADataURL = async (uri) => {
   }
 };
 
+// Helper para construir un absoluto-positioned element con coordenadas en pulgadas
+const abs = (xIn, yIn, wIn, hIn, extras = '') =>
+  `position:absolute;left:${inToPx(xIn)}px;top:${inToPx(yIn)}px;width:${inToPx(wIn)}px;height:${inToPx(hIn)}px;${extras}`;
+
+const colorCal = (cal) => {
+  if (cal == null) return '#888';
+  if (cal <= 4) return '#C62828';
+  if (cal <= 6) return '#F9A825';
+  if (cal <= 8) return '#7CB342';
+  return '#2E7D32';
+};
+
 /**
- * Genera el HTML para el PDF
- * @param {Object} supervision - Objeto de supervisión
- * @returns {Promise<string>} HTML del documento
+ * Construye el HTML — réplica fiel de pptxGenerator slide a slide,
+ * usando los mismos fondos PNG y coordenadas en pulgadas.
  */
 const generarHTML = async (supervision) => {
   const fechaHora = supervision.datosGenerales.fechaHoraSupervision;
   const fechaCompleta = formatearFechaCompleta(fechaHora);
   const fechaDiaMes = formatearFechaDiaMes(fechaHora);
   const horaSupervision = formatearHora(fechaHora);
-  const nombreCprs = supervision.datosGenerales.nombreCprs;
+  const nombreCprs = (supervision.datosGenerales.nombreCprs || '').toUpperCase();
   const areas = supervision.areas || [];
 
-  // Generar HTML para cada área
-  let areasHTML = '';
-  for (const area of areas) {
-    const observacion = area.sinNovedad ? 'Sin novedad.' : (area.observacion || 'Sin observación.');
-    
-    // Procesar fotos
+  // Cargar fondos en paralelo
+  const [bgPortada64, bgGeneral64, bgCierre64] = await Promise.all([
+    cargarAssetBase64(fondoPortada),
+    cargarAssetBase64(fondoGeneral),
+    cargarAssetBase64(fondoCierre),
+  ]);
+
+  const dataUrl = (b64) => (b64 ? `data:image/png;base64,${b64}` : '');
+
+  // Imagen del centro (si existe)
+  const imgCentroData = await imagenADataURL(supervision.datosGenerales.imagenCentro);
+
+  // Estadísticas
+  const evaluadas = areas.filter((a) => !a.noAplica && a.calificacion != null);
+  const noAplican = areas.filter((a) => a.noAplica);
+  const promedio = evaluadas.length > 0
+    ? evaluadas.reduce((acc, a) => acc + (a.calificacion || 0), 0) / evaluadas.length
+    : 0;
+  const totalFotos = areas.reduce((acc, a) => acc + (a.fotos?.length || 0), 0);
+
+  // ================ SLIDE 1: PORTADA ================
+  // Réplica del PPTX: 4 textos centrados en dorado/guinda, fecha esquina inf-derecha
+  const slidePortada = `
+    <section class="slide">
+      ${bgPortada64 ? `<img class="slide-bg" src="${dataUrl(bgPortada64)}" />` : ''}
+      <div style="${abs(0.5, 1.35, SLIDE_W_IN - 1.0, 0.6, `color:${COLORS.dorado};font-style:italic;font-weight:700;font-size:32px;text-align:center;`)}">
+        SUBSECRETARÍA DE CONTROL PENITENCIARIO
+      </div>
+      <div style="${abs(0, 2.0, SLIDE_W_IN, 0.95, `color:${COLORS.dorado};font-style:italic;font-weight:700;font-size:28px;text-align:center;line-height:1.15;`)}">
+        DIRECCIÓN GENERAL DE PREVENCIÓN Y<br/>REINSERCIÓN SOCIAL
+      </div>
+      <div style="${abs(0.5, 3.55, SLIDE_W_IN - 1.0, 0.5, `color:${COLORS.dorado};font-style:italic;font-weight:700;font-size:24px;text-align:center;`)}">
+        DELEGACIÓN ADMINISTRATIVA
+      </div>
+      <div style="${abs(0, 4.45, SLIDE_W_IN, 0.45, `color:${COLORS.guinda};font-weight:700;font-size:20px;text-align:center;`)}">
+        SUPERVISIÓN ADMINISTRATIVA EN EL C.P.R.S
+      </div>
+      <div style="${abs(0.5, 4.9, SLIDE_W_IN - 1.0, 0.45, `color:${COLORS.guinda};font-style:italic;font-weight:700;font-size:20px;text-align:center;`)}">
+        ${nombreCprs}
+      </div>
+      <div style="${abs(7.5, 6.15, 5.5, 0.5, `color:${COLORS.guinda};font-style:italic;font-weight:700;font-size:18px;text-align:right;`)}">
+        ${fechaCompleta.toUpperCase()}
+      </div>
+    </section>
+  `;
+
+  // ================ SLIDE 2: INFORMACIÓN ================
+  // Layout: header guinda + info-cards + (opcional) imagen del centro
+  const slideInfo = `
+    <section class="slide">
+      ${bgGeneral64 ? `<img class="slide-bg" src="${dataUrl(bgGeneral64)}" />` : ''}
+      <div style="${abs(0.4, 0.4, SLIDE_W_IN - 0.8, 0.7, `color:${COLORS.guinda};font-weight:800;font-size:24px;border-bottom:2px solid ${COLORS.dorado};padding-bottom:6px;`)}">
+        SUPERVISIÓN ADMINISTRATIVA EN EL C.P.R.S ${nombreCprs}
+      </div>
+
+      <div style="${abs(0.4, 1.4, 5.5, 0.4, `color:${COLORS.guinda};font-weight:700;font-size:14px;letter-spacing:0.16em;text-transform:uppercase;`)}">
+        Información general
+      </div>
+
+      <div style="${abs(0.4, 1.8, 5.5, 0.55, `font-size:16px;color:${COLORS.text};`)}">
+        <strong style="color:${COLORS.guinda};">Centro:</strong> ${nombreCprs}
+      </div>
+      <div style="${abs(0.4, 2.35, 5.5, 0.55, `font-size:16px;color:${COLORS.text};`)}">
+        <strong style="color:${COLORS.guinda};">Fecha:</strong> ${fechaDiaMes}
+      </div>
+      <div style="${abs(0.4, 2.9, 5.5, 0.55, `font-size:16px;color:${COLORS.text};`)}">
+        <strong style="color:${COLORS.guinda};">Hora:</strong> ${horaSupervision}
+      </div>
+      <div style="${abs(0.4, 3.45, 5.5, 0.55, `font-size:16px;color:${COLORS.text};`)}">
+        <strong style="color:${COLORS.guinda};">Rubros del estándar:</strong> ${areas.length} de 15
+      </div>
+
+      <div style="${abs(0.4, 4.4, 5.5, 0.4, `color:${COLORS.guinda};font-weight:700;font-size:14px;letter-spacing:0.16em;text-transform:uppercase;`)}">
+        Resumen de la supervisión
+      </div>
+
+      <div style="${abs(0.4, 4.85, 1.25, 1.6, `border:1px solid ${COLORS.dorado};border-radius:8px;padding:12px;text-align:center;`)}">
+        <div style="font-size:32px;font-weight:900;color:${COLORS.guinda};">${evaluadas.length}</div>
+        <div style="font-size:10px;letter-spacing:0.2em;color:${COLORS.dorado};text-transform:uppercase;font-weight:700;margin-top:4px;">Evaluados</div>
+      </div>
+      <div style="${abs(1.8, 4.85, 1.25, 1.6, `border:1px solid ${COLORS.dorado};border-radius:8px;padding:12px;text-align:center;`)}">
+        <div style="font-size:32px;font-weight:900;color:${COLORS.guinda};">${noAplican.length}</div>
+        <div style="font-size:10px;letter-spacing:0.2em;color:${COLORS.dorado};text-transform:uppercase;font-weight:700;margin-top:4px;">No aplican</div>
+      </div>
+      <div style="${abs(3.2, 4.85, 1.25, 1.6, `border:1px solid ${COLORS.dorado};border-radius:8px;padding:12px;text-align:center;`)}">
+        <div style="font-size:32px;font-weight:900;color:${COLORS.guinda};">${totalFotos}</div>
+        <div style="font-size:10px;letter-spacing:0.2em;color:${COLORS.dorado};text-transform:uppercase;font-weight:700;margin-top:4px;">Fotos</div>
+      </div>
+      <div style="${abs(4.6, 4.85, 1.35, 1.6, `border:2px solid ${colorCal(promedio)};border-radius:8px;padding:12px;text-align:center;background:${colorCal(promedio)}10;`)}">
+        <div style="font-size:32px;font-weight:900;color:${colorCal(promedio)};">${promedio.toFixed(2)}</div>
+        <div style="font-size:10px;letter-spacing:0.2em;color:${COLORS.dorado};text-transform:uppercase;font-weight:700;margin-top:4px;">Promedio</div>
+      </div>
+
+      ${imgCentroData ? `<img src="${imgCentroData}" style="${abs(7.0, 1.4, 5.8, 5.0, 'object-fit:cover;border-radius:10px;border:3px solid ' + COLORS.dorado + ';')}" />` : ''}
+    </section>
+  `;
+
+  // ================ SLIDES POR RUBRO ================
+  let rubrosHTML = '';
+  for (let i = 0; i < areas.length; i++) {
+    const area = areas[i];
+    const cal = area.calificacion;
+    const color = colorCal(cal);
+
+    const obs = area.sinNovedad
+      ? 'Sin novedad.'
+      : (area.observacion || 'Sin observación registrada.');
+
+    // Criterios
+    const criterios = area.criterios || [];
+    const criteriosLi = criterios.map((c) => {
+      const tag = c.cumple === true ? 'SÍ' : c.cumple === false ? 'NO' : '—';
+      const tagColor = c.cumple === true ? '#16a34a' : c.cumple === false ? '#dc2626' : '#888';
+      return `<li style="display:flex;gap:8px;align-items:flex-start;margin-bottom:4px;font-size:11px;line-height:1.3;color:${COLORS.text};">
+        <span style="flex-shrink:0;width:26px;text-align:center;font-weight:800;font-size:9px;padding:2px 0;border-radius:3px;background:${tagColor};color:#fff;">${tag}</span>
+        <span style="flex:1;">${c.texto || ''}</span>
+      </li>`;
+    }).join('');
+
+    // Fotos (máx 4 en grid 2x2 dentro del slide)
+    const fotosUrls = area.fotos
+      ? await Promise.all(area.fotos.slice(0, 4).map((f) => imagenADataURL(f.uri)))
+      : [];
+    const fotosValidas = fotosUrls.filter(Boolean);
+
     let fotosHTML = '';
-    if (area.fotos && area.fotos.length > 0) {
-      fotosHTML = '<div class="fotos-container">';
-      for (const foto of area.fotos) {
-        const dataUrl = await imagenADataURL(foto.uri);
-        if (dataUrl) {
-          fotosHTML += `<img src="${dataUrl}" class="foto" />`;
-        }
-      }
-      fotosHTML += '</div>';
+    if (fotosValidas.length > 0) {
+      const gridCols = fotosValidas.length === 1 ? 1 : 2;
+      const cellW = 5.6 / gridCols;
+      const cellH = (cellW * 0.75); // ratio 4:3
+      fotosHTML = fotosValidas.map((url, idx) => {
+        const col = idx % gridCols;
+        const row = Math.floor(idx / gridCols);
+        const xF = 7.4 + col * cellW;
+        const yF = 1.6 + row * cellH;
+        return `<img src="${url}" style="${abs(xF, yF, cellW - 0.1, cellH - 0.1, `object-fit:cover;border-radius:6px;border:1px solid ${COLORS.dorado};`)}" />`;
+      }).join('');
     } else {
-      fotosHTML = '<p class="sin-fotos">Sin evidencia fotográfica</p>';
+      fotosHTML = `<div style="${abs(7.4, 1.6, 5.5, 5.0, `background:#F5F0E8;border:1px dashed ${COLORS.dorado};border-radius:8px;display:flex;align-items:center;justify-content:center;color:#888;font-style:italic;font-size:14px;`)}">Sin evidencia fotográfica</div>`;
     }
 
-    areasHTML += `
-      <div class="area-card">
-        <div class="area-header">${area.nombre}</div>
-        <div class="area-observacion">
-          <strong>Observación:</strong> ${observacion}
+    // Badge calificación
+    const calBadge = area.noAplica
+      ? `<div style="${abs(11.8, 0.4, 1.1, 1.1, `background:#888;color:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;`)}">N/A</div>`
+      : cal != null
+        ? `<div style="${abs(11.8, 0.4, 1.1, 1.1, `background:${color};color:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;`)}">${cal}</div>`
+        : `<div style="${abs(11.8, 0.4, 1.1, 1.1, `background:#cbd5e1;color:#888;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;`)}">—</div>`;
+
+    rubrosHTML += `
+      <section class="slide">
+        ${bgGeneral64 ? `<img class="slide-bg" src="${dataUrl(bgGeneral64)}" />` : ''}
+        <div style="${abs(0.4, 0.4, 11.3, 0.45, `color:${COLORS.dorado};font-weight:800;font-size:13px;letter-spacing:0.25em;text-transform:uppercase;`)}">
+          Rubro ${i + 1}
         </div>
+        <div style="${abs(0.4, 0.85, 11.3, 0.7, `color:${COLORS.guinda};font-weight:800;font-size:24px;line-height:1.1;`)}">
+          ${area.nombre || ''}
+        </div>
+        ${calBadge}
+
+        <div style="${abs(0.4, 1.7, 6.8, 0.4, `color:${COLORS.dorado};font-weight:800;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;`)}">
+          Observación
+        </div>
+        <div style="${abs(0.4, 2.1, 6.8, 1.4, `font-size:12px;color:${COLORS.text};line-height:1.4;background:#FFF;padding:10px 14px;border-radius:6px;border:1px solid #E8DFD0;`)}">
+          ${obs}
+        </div>
+
+        ${criteriosLi ? `
+        <div style="${abs(0.4, 3.65, 6.8, 0.4, `color:${COLORS.dorado};font-weight:800;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;`)}">
+          Criterios evaluados (${criterios.filter(c=>c.cumple===true).length}/${criterios.length} cumplen)
+        </div>
+        <div style="${abs(0.4, 4.05, 6.8, 2.7, 'background:#FFF;padding:10px 14px;border-radius:6px;border:1px solid #E8DFD0;overflow:hidden;')}">
+          <ul style="list-style:none;margin:0;padding:0;">${criteriosLi}</ul>
+        </div>
+        ` : ''}
+
         ${fotosHTML}
-      </div>
+
+        <div style="${abs(0.4, 6.95, 12.5, 0.3, `color:${COLORS.dorado};font-size:9px;letter-spacing:0.2em;text-transform:uppercase;border-top:1px solid ${COLORS.dorado}40;padding-top:6px;display:flex;justify-content:space-between;`)}">
+          <span>${nombreCprs}</span>
+          <span>${fechaDiaMes} · ${horaSupervision}</span>
+        </div>
+      </section>
     `;
   }
 
-  // Lista de lugares
-  const listaLugares = areas.map(a => `<li>${a.nombre}</li>`).join('');
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        body {
-          font-family: 'Helvetica Neue', Arial, sans-serif;
-          color: ${COLORS.text};
-          background: ${COLORS.white};
-        }
-        .page {
-          page-break-after: always;
-          padding: 40px;
-          min-height: 100vh;
-        }
-        .page:last-child {
-          page-break-after: avoid;
-        }
-        
-        /* Portada */
-        .portada {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
-          background: linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%);
-          color: ${COLORS.white};
-        }
-        .portada-fecha {
-          font-size: 18px;
-          margin-bottom: 60px;
-          opacity: 0.9;
-        }
-        .portada-titulo {
-          font-size: 42px;
-          font-weight: bold;
-          margin-bottom: 20px;
-          color: ${COLORS.accent};
-        }
-        .portada-subtitulo {
-          font-size: 24px;
-          margin-bottom: 40px;
-        }
-        .linea-dorada {
-          width: 200px;
-          height: 4px;
-          background: ${COLORS.accent};
-          margin: 30px auto;
-        }
-        
-        /* Info general */
-        .header-bar {
-          background: ${COLORS.primary};
-          color: ${COLORS.white};
-          padding: 15px 20px;
-          margin: -40px -40px 30px -40px;
-        }
-        .header-bar h2 {
-          font-size: 20px;
-        }
-        .info-card {
-          background: ${COLORS.lightGray};
-          border-radius: 10px;
-          padding: 25px;
-          margin-bottom: 30px;
-          border-left: 5px solid ${COLORS.primary};
-        }
-        .info-row {
-          margin-bottom: 12px;
-          font-size: 16px;
-        }
-        .info-label {
-          font-weight: bold;
-          color: ${COLORS.primary};
-        }
-        .lugares-lista {
-          margin-top: 15px;
-          padding-left: 25px;
-        }
-        .lugares-lista li {
-          margin-bottom: 8px;
-        }
-        
-        /* Áreas */
-        .area-card {
-          background: ${COLORS.white};
-          border: 2px solid ${COLORS.lightGray};
-          border-radius: 10px;
-          margin-bottom: 25px;
-          overflow: hidden;
-          page-break-inside: avoid;
-        }
-        .area-header {
-          background: ${COLORS.primary};
-          color: ${COLORS.white};
-          padding: 12px 20px;
-          font-size: 18px;
-          font-weight: bold;
-        }
-        .area-observacion {
-          padding: 15px 20px;
-          font-size: 14px;
-          border-bottom: 1px solid ${COLORS.lightGray};
-        }
-        .fotos-container {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          padding: 15px;
-          justify-content: flex-start;
-        }
-        .foto {
-          width: 120px;
-          height: 160px;
-          object-fit: cover;
-          border-radius: 8px;
-          border: 2px solid ${COLORS.lightGray};
-        }
-        .sin-fotos {
-          padding: 20px;
-          text-align: center;
-          color: #999;
-          font-style: italic;
-        }
-        
-        /* Pie final */
-        .final-page {
-          background: ${COLORS.primary};
-          color: ${COLORS.white};
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
-        }
-        .final-titulo {
-          font-size: 32px;
-          margin-bottom: 20px;
-        }
-        .final-cprs {
-          font-size: 26px;
-          color: ${COLORS.accent};
-          font-weight: bold;
-          margin-bottom: 30px;
-        }
-        .final-fecha {
-          font-size: 16px;
-          opacity: 0.8;
-        }
-        .final-footer {
-          position: absolute;
-          bottom: 40px;
-          font-size: 10px;
-          opacity: 0.6;
-        }
-      </style>
-    </head>
-    <body>
-      <!-- Portada -->
-      <div class="page portada">
-        <div class="portada-fecha">${fechaCompleta.toUpperCase()}</div>
-        <div class="portada-titulo">${nombreCprs.toUpperCase()}</div>
-        <div class="portada-subtitulo">SUPERVISIÓN C.P.R.S.</div>
-        <div class="linea-dorada"></div>
+  // ================ SLIDE CIERRE ================
+  const slideCierre = `
+    <section class="slide">
+      ${bgCierre64 ? `<img class="slide-bg" src="${dataUrl(bgCierre64)}" />` : ''}
+      <div style="${abs(0, 2.5, SLIDE_W_IN, 0.5, `color:${COLORS.dorado};font-size:18px;letter-spacing:0.32em;text-transform:uppercase;text-align:center;font-weight:600;`)}">
+        Fin de la supervisión
       </div>
-      
-      <!-- Información General -->
-      <div class="page">
-        <div class="header-bar">
-          <h2>INFORMACIÓN DE LA SUPERVISIÓN</h2>
-        </div>
-        <div class="info-card">
-          <div class="info-row">
-            <span class="info-label">Centro:</span> ${nombreCprs}
-          </div>
-          <div class="info-row">
-            <span class="info-label">Fecha:</span> ${fechaDiaMes}
-          </div>
-          <div class="info-row">
-            <span class="info-label">Hora:</span> ${horaSupervision}
-          </div>
-          <div class="info-row">
-            <span class="info-label">Lugares recorridos:</span>
-            <ul class="lugares-lista">
-              ${listaLugares || '<li>Sin lugares registrados</li>'}
-            </ul>
-          </div>
-        </div>
+      <div style="${abs(0, 3.0, SLIDE_W_IN, 1.2, `color:${COLORS.dorado};font-weight:900;font-size:60px;text-align:center;font-style:italic;line-height:1;`)}">
+        ${nombreCprs}
       </div>
-      
-      <!-- Áreas -->
-      ${areas.length > 0 ? `
-        <div class="page">
-          <div class="header-bar">
-            <h2>ÁREAS SUPERVISADAS</h2>
-          </div>
-          ${areasHTML}
-        </div>
-      ` : ''}
-      
-      <!-- Página Final -->
-      <div class="page final-page">
-        <div class="final-titulo">SUPERVISIÓN C.P.R.S.</div>
-        <div class="final-cprs">${nombreCprs.toUpperCase()}</div>
-        <div class="linea-dorada"></div>
-        <div class="final-fecha">${fechaCompleta}</div>
-        <div class="final-footer">Documento generado automáticamente</div>
+      <div style="${abs(0, 4.3, SLIDE_W_IN, 0.5, `color:${COLORS.guinda};font-weight:600;font-size:20px;text-align:center;`)}">
+        Documento generado automáticamente
       </div>
-    </body>
-    </html>
+      <div style="${abs(SLIDE_W_IN/2 - 1, 5.0, 2, 0.04, `background:${COLORS.dorado};`)}"></div>
+      <div style="${abs(0, 5.3, SLIDE_W_IN, 0.4, `color:${COLORS.guinda};font-size:14px;letter-spacing:0.2em;text-transform:uppercase;text-align:center;`)}">
+        ${fechaCompleta}
+      </div>
+    </section>
   `;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Supervisión ${nombreCprs}</title>
+<style>
+  @page {
+    size: ${SLIDE_W}px ${SLIDE_H}px;
+    margin: 0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: ${SLIDE_W}px;
+    color: ${COLORS.text};
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide {
+    width: ${SLIDE_W}px;
+    height: ${SLIDE_H}px;
+    position: relative;
+    overflow: hidden;
+    background: ${COLORS.blanco};
+    page-break-after: always;
+    page-break-inside: avoid;
+  }
+  .slide:last-child { page-break-after: auto; }
+  .slide-bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: ${SLIDE_W}px;
+    height: ${SLIDE_H}px;
+    z-index: 0;
+  }
+  .slide > *:not(.slide-bg) { z-index: 1; }
+</style>
+</head>
+<body>
+  ${slidePortada}
+  ${slideInfo}
+  ${rubrosHTML}
+  ${slideCierre}
+</body>
+</html>`;
 };
 
 /**
- * Genera un archivo PDF con los datos de la supervisión
- * @param {Object} supervision - Objeto de supervisión completo
- * @returns {Promise<string>} URI del archivo generado
+ * Genera el PDF estructurado en slides 16:9.
+ * Las páginas del PDF tienen tamaño exacto 1280x720 (sin márgenes), igual al PPTX.
  */
 export const generarPDF = async (supervision) => {
   try {
-    console.log('[PDF] === INICIANDO GENERACIÓN ===');
-    console.log('[PDF] CPRS:', supervision.datosGenerales.nombreCprs);
-    console.log('[PDF] Áreas:', supervision.areas?.length || 0);
-    
-    console.log('[PDF] Generando HTML...');
     const html = await generarHTML(supervision);
-    console.log('[PDF] HTML generado, tamaño:', Math.round(html.length / 1024), 'KB');
-    
+
     if (isWeb) {
-      // En web, abrir ventana de impresión
-      console.log('[PDF] Modo Web - abriendo ventana de impresión...');
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(html);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
+        setTimeout(() => printWindow.print(), 500);
       }
-      console.log('[PDF] === VENTANA DE IMPRESIÓN ABIERTA ===');
       return 'web-print';
     }
-    
-    console.log('[PDF] Imprimiendo a archivo...');
+
+    // expo-print acepta width/height en puntos (1pt = 1/72 in).
+    // 13.333 in × 72 = 960 pt;  7.5 in × 72 = 540 pt.
     const { uri } = await Print.printToFileAsync({
       html,
       base64: false,
+      width: 960,
+      height: 540,
+      margins: { left: 0, right: 0, top: 0, bottom: 0 },
     });
-    console.log('[PDF] Archivo temporal:', uri);
 
-    // Renombrar el archivo con nombre descriptivo
-    const nombreCprs = supervision.datosGenerales.nombreCprs;
+    const nombreCprs = supervision.datosGenerales.nombreCprs || 'CPRS';
     const fechaHora = supervision.datosGenerales.fechaHoraSupervision;
     const nombreLimpio = nombreCprs.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '').replace(/\s+/g, '_');
     const fecha = new Date(fechaHora);
@@ -422,45 +405,27 @@ export const generarPDF = async (supervision) => {
     const nuevoNombre = `Supervision_CPRS_${nombreLimpio}_${fechaStr}.pdf`;
     const nuevaRuta = `${FileSystem.documentDirectory}${nuevoNombre}`;
 
-    console.log('[PDF] Moviendo a:', nuevaRuta);
-    await FileSystem.moveAsync({
-      from: uri,
-      to: nuevaRuta,
-    });
-
-    console.log('[PDF] === GENERACIÓN COMPLETADA ===');
+    await FileSystem.moveAsync({ from: uri, to: nuevaRuta });
     return nuevaRuta;
-  } catch (error) {
-    console.error('[PDF] Error generando PDF:', error);
-    throw error;
+  } catch (err) {
+    console.log('[PDF] FATAL:', err.message);
+    throw err;
   }
 };
 
 /**
- * Comparte un archivo PDF
- * @param {string} filePath - Ruta del archivo a compartir
+ * Comparte el PDF generado vía Sharing API.
  */
-export const compartirPDF = async (filePath) => {
-  try {
-    // En web, la ventana de impresión ya se abrió
-    if (isWeb) {
-      console.log('[PDF] Web: ventana de impresión ya abierta');
-      return;
-    }
-    
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (isAvailable) {
-      console.log('Compartiendo archivo PDF:', filePath);
-      
-      await Sharing.shareAsync(filePath, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Compartir Supervisión PDF',
-      });
-    } else {
-      throw new Error('Compartir no está disponible en este dispositivo');
-    }
-  } catch (error) {
-    console.error('Error compartiendo PDF:', error);
-    throw error;
+export const compartirPDF = async (uri) => {
+  if (isWeb) return;
+  const disponible = await Sharing.isAvailableAsync();
+  if (!disponible) {
+    console.log('[PDF] Sharing no disponible');
+    return;
   }
+  await Sharing.shareAsync(uri, {
+    mimeType: 'application/pdf',
+    dialogTitle: 'Compartir supervisión',
+    UTI: 'com.adobe.pdf',
+  });
 };

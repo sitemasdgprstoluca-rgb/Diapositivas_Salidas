@@ -1,6 +1,7 @@
 import { crearClienteServidor } from '../../lib/supabase-server';
 import Header from '../../components/Header';
 import CompararCliente from '../../components/CompararCliente';
+import { IconAntenna } from '../../components/ui/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +64,9 @@ export default async function CompararPage() {
 
         {centrosDisponibles.length === 0 ? (
           <div className="inst-card-dark p-16 text-center">
-            <div className="text-6xl mb-4">📡</div>
+            <div className="text-dorado-300/70 mb-5 flex justify-center">
+              <IconAntenna width={56} height={56} />
+            </div>
             <h2 className="text-white text-2xl font-bold mb-2">Aún no hay datos</h2>
             <p className="text-white/55 text-base max-w-md mx-auto">
               Cuando los supervisores finalicen supervisiones desde la app móvil,

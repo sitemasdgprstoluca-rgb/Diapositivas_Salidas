@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/theme';
 
 const Select = ({
@@ -42,7 +43,7 @@ const Select = ({
         <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
           {optLabel}
         </Text>
-        {isSelected && <Text style={styles.checkmark}>✓</Text>}
+        {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
       </TouchableOpacity>
     );
   };
@@ -90,7 +91,7 @@ const Select = ({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{label || 'Seleccionar'}</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Text style={styles.closeButton}>✕</Text>
+                <Ionicons name="close" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
             

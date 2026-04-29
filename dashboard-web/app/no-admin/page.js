@@ -2,6 +2,7 @@
 
 import { crearClienteNavegador } from '../../lib/supabase-browser';
 import { useRouter } from 'next/navigation';
+import { IconLock } from '../../components/ui/icons';
 
 export default function NoAdminPage() {
   const router = useRouter();
@@ -16,7 +17,9 @@ export default function NoAdminPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-guinda-dark via-guinda to-guinda-light flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-2xl text-center">
-        <div className="text-6xl mb-4">🔒</div>
+        <div className="text-institucional-500 mb-5 flex justify-center">
+          <IconLock width={56} height={56} strokeWidth={1.8} />
+        </div>
         <h1 className="text-2xl font-extrabold text-gray-900">Acceso restringido</h1>
         <p className="text-gray-600 mt-3 leading-relaxed">
           Tu cuenta no tiene permisos de administrador. Este dashboard está restringido a personal autorizado.

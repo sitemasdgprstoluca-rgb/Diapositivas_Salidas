@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { LoadingModal } from '../src/components';
@@ -211,7 +212,7 @@ export default function VistaPreviaScreen() {
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.homeButton} onPress={handleIrInicio}>
-            <Text style={styles.homeButtonText}>🏠</Text>
+            <Ionicons name="home-outline" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.headerContent}>
@@ -231,7 +232,9 @@ export default function VistaPreviaScreen() {
         {/* Tarjeta de resumen */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
-            <Text style={styles.summaryIcon}>📊</Text>
+            <View style={styles.summaryIconWrap}>
+              <Ionicons name="bar-chart-outline" size={24} color={COLORS.primary} />
+            </View>
             <View style={styles.summaryTitleSection}>
               <Text style={styles.summaryTitle}>{datosGenerales.nombreCprs || 'Sin nombre'}</Text>
               <Text style={styles.summarySubtitle}>
@@ -270,11 +273,14 @@ export default function VistaPreviaScreen() {
 
         {/* Resumen de rubros */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Indicadores por Rubro</Text>
+          <View style={styles.sectionTitleWrap}>
+            <Ionicons name="bar-chart-outline" size={18} color={COLORS.text} style={{ marginRight: 8 }} />
+            <Text style={styles.sectionTitle}>Indicadores por Rubro</Text>
+          </View>
 
           {areas.length === 0 ? (
             <View style={styles.warningCard}>
-              <Text style={styles.warningIcon}>⚠️</Text>
+              <Ionicons name="alert-circle-outline" size={24} color={COLORS.error || '#dc2626'} style={{ marginRight: 8 }} />
               <Text style={styles.warningText}>
                 No se han cargado rubros.
               </Text>
@@ -347,10 +353,13 @@ export default function VistaPreviaScreen() {
 
         {/* Info del archivo */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📄 Archivo a generar</Text>
+          <View style={styles.sectionTitleWrap}>
+            <Ionicons name="document-outline" size={18} color={COLORS.text} style={{ marginRight: 8 }} />
+            <Text style={styles.sectionTitle}>Archivo a generar</Text>
+          </View>
           <View style={styles.fileCard}>
             <View style={styles.fileIcon}>
-              <Text style={styles.fileIconText}>📊</Text>
+              <Ionicons name="bar-chart-outline" size={28} color={COLORS.primary} />
             </View>
             <View style={styles.fileInfo}>
               <Text style={styles.fileName}>{nombreArchivo}</Text>
@@ -383,7 +392,10 @@ export default function VistaPreviaScreen() {
             {generando && tipoGenerando === 'pdf' ? (
               <ActivityIndicator size="small" color={COLORS.white} />
             ) : (
-              <Text style={styles.generateButtonText}>📄 PDF</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="document-text-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.generateButtonText}>PDF</Text>
+              </View>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -402,7 +414,10 @@ export default function VistaPreviaScreen() {
             {generando && tipoGenerando === 'pptx' ? (
               <ActivityIndicator size="small" color={COLORS.white} />
             ) : (
-              <Text style={styles.generateButtonText}>📊 PPTX</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="bar-chart-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.generateButtonText}>PPTX</Text>
+              </View>
             )}
           </LinearGradient>
         </TouchableOpacity>

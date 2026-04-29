@@ -11,6 +11,7 @@ import {
   IconBan,
   IconCamera,
   IconTarget,
+  IconX,
 } from '../../../components/ui/icons';
 import { colorPorCalificacion, formatearFecha } from '../../../lib/colores';
 
@@ -223,7 +224,7 @@ export default async function SupervisionDetalle({ params }) {
                                 className="flex items-start gap-3 text-sm"
                               >
                                 <span
-                                  className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-white font-bold text-xs flex-shrink-0 ${
+                                  className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-white flex-shrink-0 ${
                                     c.cumple === true
                                       ? 'bg-emerald-600'
                                       : c.cumple === false
@@ -238,7 +239,13 @@ export default async function SupervisionDetalle({ params }) {
                                         : undefined
                                   }
                                 >
-                                  {c.cumple === true ? '✓' : c.cumple === false ? '✗' : '—'}
+                                  {c.cumple === true ? (
+                                    <IconCheck width={12} height={12} strokeWidth={2.5} />
+                                  ) : c.cumple === false ? (
+                                    <IconX width={12} height={12} strokeWidth={2.5} />
+                                  ) : (
+                                    <span className="text-xs">—</span>
+                                  )}
                                 </span>
                                 <span className="text-white/85">{c.texto}</span>
                               </li>

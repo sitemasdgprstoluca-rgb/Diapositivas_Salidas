@@ -8,6 +8,7 @@ import {
   IconClipboard,
   IconChart,
   IconShield,
+  IconAntenna,
 } from '../components/ui/icons';
 import { colorPorCalificacion, formatearFecha } from '../lib/colores';
 
@@ -17,6 +18,14 @@ async function cargarDatos() {
   const supabase = crearClienteServidor();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // 1) Catálogo oficial (con fallback si la tabla aún no se migró)
+  const { data: catalogoData } = await supabase
+    .from('cprs_centros')
+    .select('nombre, orden')
+    .eq('activo', true)
+    .order('orden', { ascending: true });
+
+  // 2) Supervisiones finalizadas
   const { data: supervisiones, error } = await supabase
     .from('supervisiones')
     .select('id, nombre_cprs, fecha_hora_supervision, estado, promedio_general, user_id')
@@ -35,14 +44,31 @@ async function cargarDatos() {
     agrupados[nombre].push(sup);
   }
 
-  const centros = Object.entries(agrupados).map(([nombre, items]) => {
-    const ordenadas = items;
-    const ultima = ordenadas[0];
-    const anterior = ordenadas[1];
-    const delta = anterior ? (ultima.promedio_general - anterior.promedio_general) : null;
+  // Si tenemos catálogo, usamos su orden + nombres como base, mergeamos
+  // las supervisiones agrupadas. Centros sin supervisiones aparecen
+  // igualmente como "pendientes". Si NO hay catálogo, fallback al
+  // comportamiento previo: derivar del set de supervisiones.
+  const tieneCatalogo = catalogoData && catalogoData.length > 0;
+  const nombresBase = tieneCatalogo
+    ? catalogoData.map((c) => c.nombre)
+    : Object.keys(agrupados);
+
+  // Asegurar que cualquier supervisión con nombre fuera del catálogo
+  // también aparezca (datos legacy o tipos inesperados).
+  for (const nombre of Object.keys(agrupados)) {
+    if (!nombresBase.includes(nombre)) nombresBase.push(nombre);
+  }
+
+  const centros = nombresBase.map((nombre) => {
+    const items = agrupados[nombre] || [];
+    const ultima = items[0];
+    const anterior = items[1];
+    const delta = anterior
+      ? (ultima.promedio_general - anterior.promedio_general)
+      : null;
     return {
       nombre,
-      totalSupervisiones: ordenadas.length,
+      totalSupervisiones: items.length,
       ultima,
       promedioActual: ultima?.promedio_general ?? null,
       promedioAnterior: anterior?.promedio_general ?? null,
@@ -51,7 +77,10 @@ async function cargarDatos() {
     };
   });
 
-  centros.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  if (!tieneCatalogo) {
+    // Sin catálogo, ordenar alfabéticamente
+    centros.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
 
   return { user, centros };
 }
@@ -59,13 +88,20 @@ async function cargarDatos() {
 export default async function HomePage() {
   const { user, centros } = await cargarDatos();
 
+  const evaluados = centros.filter((c) => c.totalSupervisiones > 0);
   const totalSups = centros.reduce((acc, c) => acc + c.totalSupervisiones, 0);
-  const promGlobal = centros.length > 0
-    ? centros.reduce((acc, c) => acc + (c.promedioActual || 0), 0) / centros.length
+  const promGlobal = evaluados.length > 0
+    ? evaluados.reduce((acc, c) => acc + (c.promedioActual || 0), 0) / evaluados.length
     : 0;
 
   const cumplimientoTexto =
-    promGlobal >= 8 ? 'Óptimo' : promGlobal >= 6 ? 'Aceptable' : 'En riesgo';
+    evaluados.length === 0
+      ? 'Sin datos'
+      : promGlobal >= 8
+        ? 'Óptimo'
+        : promGlobal >= 6
+          ? 'Aceptable'
+          : 'En riesgo';
 
   return (
     <>
@@ -94,9 +130,10 @@ export default async function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           <HexKpiCard
             icon={<IconBuilding />}
-            value={centros.length}
+            value={`${evaluados.length}/${centros.length}`}
             label="Centros evaluados"
             tone="guinda"
+            hint={`del catálogo de ${centros.length}`}
           />
           <HexKpiCard
             icon={<IconClipboard />}
@@ -116,7 +153,7 @@ export default async function HomePage() {
             value={centros.filter((c) => (c.promedioActual ?? 0) >= 8).length}
             label="Centros en óptimo"
             tone="neutro"
-            hint={`de ${centros.length || 0}`}
+            hint={`de ${evaluados.length} evaluados`}
           />
         </div>
 
@@ -134,7 +171,9 @@ export default async function HomePage() {
         >
           {centros.length === 0 ? (
             <div className="py-16 text-center">
-              <div className="text-5xl mb-4">📡</div>
+              <div className="text-dorado-300/70 mb-5 flex justify-center">
+                <IconAntenna width={48} height={48} />
+              </div>
               <p className="text-white/70 text-lg font-semibold">
                 Aún no hay supervisiones finalizadas.
               </p>

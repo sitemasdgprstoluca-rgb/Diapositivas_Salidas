@@ -34,6 +34,23 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------
+-- Tabla: cprs_centros
+-- Catálogo oficial de Centros Penitenciarios y de Reinserción Social
+-- del Estado de México. Fuente única de verdad para móvil + dashboard.
+-- Los nombres en supervisiones.nombre_cprs deben coincidir con esta tabla.
+-- ---------------------------------------------------------------------
+create table if not exists public.cprs_centros (
+  id             uuid primary key default gen_random_uuid(),
+  nombre         text unique not null,
+  orden          int default 999,
+  activo         boolean not null default true,
+  fecha_creacion timestamptz not null default now()
+);
+
+create index if not exists idx_cprs_centros_orden
+  on public.cprs_centros(orden, nombre);
+
+-- ---------------------------------------------------------------------
 -- Tabla: supervisiones
 -- ---------------------------------------------------------------------
 create table if not exists public.supervisiones (
@@ -110,10 +127,33 @@ create index if not exists idx_fotos_rubro_id
 -- =====================================================================
 
 alter table public.admins          enable row level security;
+alter table public.cprs_centros    enable row level security;
 alter table public.supervisiones   enable row level security;
 alter table public.rubros          enable row level security;
 alter table public.criterios_rubro enable row level security;
 alter table public.fotos_rubro     enable row level security;
+
+-- cprs_centros: lectura pública para usuarios autenticados, modificación solo admin
+drop policy if exists "cprs_centros_select_auth"  on public.cprs_centros;
+drop policy if exists "cprs_centros_insert_admin" on public.cprs_centros;
+drop policy if exists "cprs_centros_update_admin" on public.cprs_centros;
+drop policy if exists "cprs_centros_delete_admin" on public.cprs_centros;
+
+create policy "cprs_centros_select_auth"
+  on public.cprs_centros for select
+  using (auth.uid() is not null);
+
+create policy "cprs_centros_insert_admin"
+  on public.cprs_centros for insert
+  with check (public.es_admin());
+
+create policy "cprs_centros_update_admin"
+  on public.cprs_centros for update
+  using (public.es_admin());
+
+create policy "cprs_centros_delete_admin"
+  on public.cprs_centros for delete
+  using (public.es_admin());
 
 -- admins: solo admins pueden ver/editar la tabla admins
 drop policy if exists "admins_select_solo_admin" on public.admins;
@@ -340,3 +380,33 @@ drop trigger if exists trg_supervisiones_touch on public.supervisiones;
 create trigger trg_supervisiones_touch
   before update on public.supervisiones
   for each row execute function public.touch_fecha_modificacion();
+
+-- =====================================================================
+-- SEED: catálogo oficial de Centros Penitenciarios (22 centros)
+-- Idempotente: ON CONFLICT (nombre) DO NOTHING.
+-- =====================================================================
+
+insert into public.cprs_centros (nombre, orden) values
+  ('TENANCINGO SUR', 1),
+  ('PENITENCIARÍA MODELO', 2),
+  ('OTUMBA TEPACHICO', 3),
+  ('LERMA', 4),
+  ('TLALNEPANTLA', 5),
+  ('CUAUTITLAN', 6),
+  ('CHALCO', 7),
+  ('ZUMPANGO', 8),
+  ('TENANGO DEL VALLE', 9),
+  ('JILOTEPEC', 10),
+  ('NEZAHUALCOYOTL SUR', 11),
+  ('VALLE DE BRAVO', 12),
+  ('EL ORO', 13),
+  ('SULTEPEC', 14),
+  ('NEZAHUALCOYOTL NORTE', 15),
+  ('TEXCOCO', 16),
+  ('NEZA BORDO', 17),
+  ('ECATEPEC', 18),
+  ('TENANCINGO CENTRO', 19),
+  ('IXTLAHUACA', 20),
+  ('Centro de Internamiento para adolescentes "QUINTA DEL BOSQUE"', 21),
+  ('SANTIAGUITO', 22)
+on conflict (nombre) do nothing;

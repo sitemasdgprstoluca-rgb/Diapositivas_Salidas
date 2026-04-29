@@ -22,10 +22,10 @@ const errors = [];
 const test = async (name, fn) => {
   try {
     await fn();
-    console.log('  ✓', name);
+    console.log('  [OK]', name);
     passed++;
   } catch (e) {
-    console.log('  ✗', name, '→', e.message);
+    console.log('  [FAIL]', name, '→', e.message);
     errors.push({ name, error: e.message });
     failed++;
   }

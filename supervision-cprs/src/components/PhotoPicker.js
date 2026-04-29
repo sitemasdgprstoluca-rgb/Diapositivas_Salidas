@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 
 const PhotoPicker = ({
@@ -107,8 +108,8 @@ const PhotoPicker = ({
       'Selecciona una opción',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: '📷 Tomar foto', onPress: takePhoto },
-        { text: '🖼️ Galería', onPress: pickFromGallery },
+        { text: 'Tomar foto', onPress: takePhoto },
+        { text: 'Galería', onPress: pickFromGallery },
       ]
     );
   };
@@ -134,7 +135,7 @@ const PhotoPicker = ({
               style={styles.removeButton}
               onPress={() => confirmRemove(index)}
             >
-              <Text style={styles.removeButtonText}>✕</Text>
+              <Ionicons name="close" size={14} color="#fff" />
             </TouchableOpacity>
           </View>
         ))}
@@ -145,7 +146,7 @@ const PhotoPicker = ({
             onPress={showPhotoOptions}
             activeOpacity={0.7}
           >
-            <Text style={styles.addButtonIcon}>📷</Text>
+            <Ionicons name="camera-outline" size={28} color={COLORS.primary} style={{ marginBottom: 4 }} />
             <Text style={styles.addButtonText}>Agregar</Text>
           </TouchableOpacity>
         )}

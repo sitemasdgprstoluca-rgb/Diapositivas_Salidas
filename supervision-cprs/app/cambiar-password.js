@@ -39,7 +39,7 @@ export default function CambiarPasswordScreen() {
       Alert.alert('No se pudo cambiar la contraseña', error);
       return;
     }
-    Alert.alert('✅ Contraseña actualizada', 'Tu contraseña fue cambiada correctamente.', [
+    Alert.alert('Contraseña actualizada', 'Tu contraseña fue cambiada correctamente.', [
       { text: 'OK', onPress: () => router.replace('/') },
     ]);
   };

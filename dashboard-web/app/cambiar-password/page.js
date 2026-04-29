@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { crearClienteNavegador } from '../../lib/supabase-browser';
+import { IconCheckCircle } from '../../components/ui/icons';
 
 export default function CambiarPasswordPage() {
   const router = useRouter();
@@ -96,7 +97,9 @@ export default function CambiarPasswordPage() {
           </form>
         ) : (
           <div className="bg-white rounded-2xl p-8 shadow-2xl text-center">
-            <div className="text-6xl mb-3">✅</div>
+            <div className="text-emerald-600 mb-4 flex justify-center">
+              <IconCheckCircle width={56} height={56} strokeWidth={1.8} />
+            </div>
             <h2 className="text-2xl font-extrabold text-gray-900">Contraseña actualizada</h2>
             <p className="text-gray-600 mt-3">Te llevamos al dashboard…</p>
           </div>

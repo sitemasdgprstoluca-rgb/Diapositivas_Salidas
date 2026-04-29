@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { crearClienteNavegador } from '../lib/supabase-browser';
+import { IconKey } from './ui/icons';
 
 export default function Header({ email }) {
   const router = useRouter();
@@ -97,8 +98,9 @@ export default function Header({ email }) {
             href="/cambiar-password"
             className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition border border-white/15 hidden sm:inline-flex items-center"
             title="Cambiar contraseña"
+            aria-label="Cambiar contraseña"
           >
-            🔑
+            <IconKey width={16} height={16} />
           </Link>
           <button
             onClick={handleLogout}

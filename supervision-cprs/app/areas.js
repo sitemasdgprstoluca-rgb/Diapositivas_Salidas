@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { Button, RubroCard } from '../src/components';
 import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
@@ -84,7 +85,7 @@ export default function AreasScreen() {
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.homeButton} onPress={handleIrInicio}>
-            <Text style={styles.homeButtonText}>🏠</Text>
+            <Ionicons name="home-outline" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.headerContent}>
@@ -94,15 +95,18 @@ export default function AreasScreen() {
           <Text style={styles.headerTitle}>Indicadores por Rubro</Text>
           <View style={styles.headerStats}>
             <View style={styles.statBadge}>
+              <Ionicons name="checkmark-circle-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
               <Text style={styles.statBadgeText}>
-                ✅ {evaluados.length}/{rubros.length - noAplicaCount}
+                {evaluados.length}/{rubros.length - noAplicaCount}
               </Text>
             </View>
             <View style={styles.statBadge}>
-              <Text style={styles.statBadgeText}>🚫 {noAplicaCount} N/A</Text>
+              <Ionicons name="ban-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
+              <Text style={styles.statBadgeText}>{noAplicaCount} N/A</Text>
             </View>
             <View style={styles.statBadge}>
-              <Text style={styles.statBadgeText}>📷 {totalFotos}</Text>
+              <Ionicons name="camera-outline" size={14} color="#fff" style={{ marginRight: 4 }} />
+              <Text style={styles.statBadgeText}>{totalFotos}</Text>
             </View>
             <View style={[styles.promedioBadge, { backgroundColor: colorPromedio }]}>
               <Text style={styles.promedioBadgeText}>
@@ -120,7 +124,7 @@ export default function AreasScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.infoBox}>
-          <Text style={styles.infoIcon}>💡</Text>
+          <Ionicons name="bulb-outline" size={20} color={COLORS.primary} style={{ marginRight: 10, marginTop: 2 }} />
           <Text style={styles.infoText}>
             Evalúa los 15 rubros oficiales. Califica del 1 al 10 (obligatorio responder todos los
             criterios). Si el C.P.R.S. no cuenta con algún rubro, marca "No aplica".
