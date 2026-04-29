@@ -111,15 +111,40 @@ Los teléfonos descargan la actualización al abrir la app. Tres canales: `devel
 
 Sin el secret, el step `Publish OTA update` se salta gracefully (no rompe el CI).
 
-### 3. Distribución del APK (solo cuando hay rebuild)
+### 3. Distribución del APK sin expiración (GitHub Releases)
+
+**IMPORTANTE**: Los enlaces de descarga que da EAS Build (`https://expo.dev/...`) **caducan a los 30 días**. Si solo compartes ese link, los supervisores no podrán reinstalar el APK pasado un mes.
+
+Solución implementada — workflow `.github/workflows/release-mobile.yml`:
+1. Pushear un tag con formato `vX.Y.Z` (ej: `git tag v1.0.1 && git push --tags`)
+2. El workflow corre `eas build --profile preview` y descarga el APK firmado
+3. Crea automáticamente un **GitHub Release** con el APK adjunto
+4. URL pública estable que **nunca caduca**: `https://github.com/.../releases/latest`
+
+También se puede disparar manualmente desde la pestaña "Actions" → "Release mobile APK" → "Run workflow".
+
+Para 22 supervisores tablets/teléfonos, hay tres opciones:
+
+| Opción | Setup | Updates futuros |
+|---|---|---|
+| **GitHub Releases** (implementado) | Push tag → CI sube APK | Push tag nuevo, comparte link |
+| **Google Play Internal Testing** | $25 USD una vez, 22 emails | Subes AAB, distribución automática |
+| **MDM corporativo** | Solo si la institución tiene MDM | El admin lo distribuye |
 
 ```powershell
 cd supervision-cprs
-eas build --platform android --profile preview      # genera APK distribuible
-eas build --platform android --profile production   # genera AAB para Play Store
+eas build --platform android --profile preview      # APK manual (link expira 30 días)
+eas build --platform android --profile production   # AAB para Play Store
 ```
 
-Para 22 supervisores la opción más sostenible es **Internal Testing en Google Play**: subes el AAB una vez, registras los emails de los supervisores, y reciben futuros rebuilds automáticamente.
+### Soporte tablets
+
+`app.json` tiene:
+- `orientation: "default"` → portrait y landscape automáticos según dispositivo
+- `ios.supportsTablet: true` → iPad nativo
+- Layout responsivo con flexbox/Dimensions API → adapta al ancho de pantalla
+
+Cuando agregues nuevos componentes, evitá `width` y `height` fijos en pixels grandes (>200px); usa `flex`, `%` o `Dimensions.get('window')`.
 
 ### 4. Crash reporting (recomendado, no instalado aún)
 
