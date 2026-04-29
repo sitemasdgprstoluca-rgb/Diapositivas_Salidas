@@ -5,34 +5,14 @@ import RadarComparativo from './analytics/RadarComparativo';
 import EvolucionConPrediccion from './analytics/EvolucionConPrediccion';
 import RankingGeneral from './analytics/RankingGeneral';
 import InsightsIA from './analytics/InsightsIA';
+import {
+  stdDev,
+  proyectarSiguiente,
+  calcularRanking,
+  generarInsights,
+} from '@/lib/analytics';
 
 const PALETA = ['#D4A94C', '#C64864', '#7CB342', '#1565C0', '#E65100', '#6A1B9A', '#00838F'];
-
-/**
- * Regresión lineal simple para proyectar el siguiente valor.
- * Usa mínimos cuadrados sobre los últimos N puntos (cap 6 para estabilidad).
- */
-function proyectarSiguiente(serie) {
-  const ultimos = serie.slice(-6);
-  if (ultimos.length < 2) return null;
-  const n = ultimos.length;
-  const sx = ultimos.reduce((a, _, i) => a + i, 0);
-  const sy = ultimos.reduce((a, v) => a + v, 0);
-  const sxy = ultimos.reduce((a, v, i) => a + i * v, 0);
-  const sxx = ultimos.reduce((a, _, i) => a + i * i, 0);
-  const m = (n * sxy - sx * sy) / (n * sxx - sx * sx);
-  const b = (sy - m * sx) / n;
-  const proyectado = m * n + b;
-  return Math.max(0, Math.min(10, Number(proyectado.toFixed(2))));
-}
-
-/** Desviación estándar para medir consistencia. */
-function stdDev(serie) {
-  if (serie.length < 2) return 0;
-  const mean = serie.reduce((a, v) => a + v, 0) / serie.length;
-  const variance = serie.reduce((a, v) => a + (v - mean) ** 2, 0) / serie.length;
-  return Math.sqrt(variance);
-}
 
 export default function CompararCliente({ centrosDisponibles, todasSups, rubrosPorSup }) {
   const [seleccionados, setSeleccionados] = useState(centrosDisponibles.slice(0, Math.min(3, centrosDisponibles.length)));
@@ -66,15 +46,10 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
   }, [seleccionados, todasSups]);
 
   // Ranking con delta vs primera visita
-  const ranking = useMemo(() => {
-    return seleccionados.map((nombre) => {
-      const serie = seriesPorCentro[nombre] || [];
-      const primera = serie[0]?.promedio;
-      const ultima = serie[serie.length - 1]?.promedio || 0;
-      const delta = primera != null ? Number((ultima - primera).toFixed(2)) : null;
-      return { nombre, promedio: ultima, delta, visitas: serie.length };
-    }).sort((a, b) => b.promedio - a.promedio);
-  }, [seleccionados, seriesPorCentro]);
+  const ranking = useMemo(
+    () => calcularRanking(seleccionados, seriesPorCentro),
+    [seleccionados, seriesPorCentro]
+  );
 
   // Evolución temporal unificada con proyección
   const evolucionData = useMemo(() => {
@@ -154,84 +129,11 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
     return Array.from(rubros.values()).sort((a, b) => (a.orden || 0) - (b.orden || 0));
   }, [seleccionados, seriesPorCentro, rubrosPorSup]);
 
-  // Insights de IA calculados automáticamente
-  const insights = useMemo(() => {
-    if (seleccionados.length === 0) return [];
-    const out = [];
-
-    // 1) Mejor mejora
-    const conDelta = ranking.filter((r) => r.delta != null && r.visitas >= 2);
-    if (conDelta.length > 0) {
-      const mejor = [...conDelta].sort((a, b) => b.delta - a.delta)[0];
-      if (mejor.delta > 0) {
-        out.push({
-          tipo: 'mejora',
-          titulo: 'Mejor progresión',
-          descripcion: `${mejor.nombre} subió +${mejor.delta.toFixed(2)} puntos desde su primera visita. Reconoce prácticas y replícalas.`,
-        });
-      }
-      // 2) Regresión
-      const peor = [...conDelta].sort((a, b) => a.delta - b.delta)[0];
-      if (peor.delta < -0.5) {
-        out.push({
-          tipo: 'riesgo',
-          titulo: 'Regresión detectada',
-          descripcion: `${peor.nombre} bajó ${Math.abs(peor.delta).toFixed(2)} puntos. Se recomienda supervisión de seguimiento.`,
-        });
-      }
-    }
-
-    // 3) Más consistente
-    const consistencias = seleccionados.map((nombre) => {
-      const serie = (seriesPorCentro[nombre] || []).map((s) => s.promedio);
-      return { nombre, sd: stdDev(serie), visitas: serie.length };
-    }).filter((c) => c.visitas >= 3);
-    if (consistencias.length > 0) {
-      const masCons = [...consistencias].sort((a, b) => a.sd - b.sd)[0];
-      if (masCons.sd < 0.8) {
-        out.push({
-          tipo: 'consistencia',
-          titulo: 'Mayor consistencia',
-          descripcion: `${masCons.nombre} mantiene desempeño estable (desviación de ${masCons.sd.toFixed(2)} en ${masCons.visitas} visitas).`,
-        });
-      }
-    }
-
-    // 4) Oportunidad: rubro más débil del peor centro
-    if (ranking.length > 0 && radarData.length > 0) {
-      const peorCentro = ranking[ranking.length - 1].nombre;
-      const rubroPeor = [...radarData]
-        .filter((r) => r[peorCentro] != null)
-        .sort((a, b) => (a[peorCentro] || 0) - (b[peorCentro] || 0))[0];
-      if (rubroPeor && rubroPeor[peorCentro] <= 6) {
-        out.push({
-          tipo: 'oportunidad',
-          titulo: 'Área de oportunidad',
-          descripcion: `${peorCentro} tiene su calificación más baja en "${rubroPeor.rubro}" (${rubroPeor[peorCentro]}/10). Focalizar acciones correctivas ahí.`,
-        });
-      }
-    }
-
-    // 5) Predicción destacada
-    const projs = Object.entries(evolucionData.proyecciones || {});
-    if (projs.length > 0) {
-      const subiendo = projs
-        .map(([nombre, proy]) => {
-          const ultimo = (seriesPorCentro[nombre] || []).slice(-1)[0]?.promedio || 0;
-          return { nombre, proy, delta: proy - ultimo };
-        })
-        .sort((a, b) => b.delta - a.delta)[0];
-      if (subiendo && Math.abs(subiendo.delta) > 0.1) {
-        out.push({
-          tipo: 'prediccion',
-          titulo: 'Tendencia proyectada',
-          descripcion: `${subiendo.nombre} proyecta ${subiendo.delta > 0 ? 'subir' : 'bajar'} a ${subiendo.proy.toFixed(2)} en la próxima visita según tendencia.`,
-        });
-      }
-    }
-
-    return out;
-  }, [seleccionados, ranking, seriesPorCentro, radarData, evolucionData]);
+  // Insights de IA calculados automáticamente (5 reglas, ver lib/analytics.js)
+  const insights = useMemo(
+    () => generarInsights(ranking, seriesPorCentro, radarData, evolucionData, seleccionados),
+    [seleccionados, ranking, seriesPorCentro, radarData, evolucionData]
+  );
 
   const totalVisitas = ranking.reduce((acc, r) => acc + r.visitas, 0);
 
