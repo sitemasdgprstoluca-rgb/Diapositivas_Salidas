@@ -122,25 +122,25 @@ export default async function SupervisionDetalle({ params }) {
 
           <div className="lg:col-span-2 grid grid-cols-2 gap-6">
             <HexKpiCard
-              icon={IconClipboard}
+              icon={<IconClipboard />}
               value={rubros.length}
               label="Rubros totales"
               tone="guinda"
             />
             <HexKpiCard
-              icon={IconCheck}
+              icon={<IconCheck />}
               value={evaluados.length}
               label="Evaluados"
               tone="dorado"
             />
             <HexKpiCard
-              icon={IconBan}
+              icon={<IconBan />}
               value={noAplican.length}
               label="No aplican"
               tone="neutro"
             />
             <HexKpiCard
-              icon={IconCamera}
+              icon={<IconCamera />}
               value={totalFotos}
               label="Fotos"
               tone="guinda"

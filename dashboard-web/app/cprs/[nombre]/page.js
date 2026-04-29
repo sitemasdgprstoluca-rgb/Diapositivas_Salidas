@@ -150,28 +150,28 @@ export default async function CentroPage({ params }) {
         {/* KPIs hexagonales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           <HexKpiCard
-            icon={IconTarget}
+            icon={<IconTarget />}
             value={Number(ultima.promedio_general || 0).toFixed(2)}
             label="Promedio actual"
             tone={ultima.promedio_general >= 8 ? 'dorado' : 'guinda'}
             hint={formatearFecha(ultima.fecha_hora_supervision)}
           />
           <HexKpiCard
-            icon={IconPin}
+            icon={<IconPin />}
             value={Number(primera.promedio_general || 0).toFixed(2)}
             label="Primera medición"
             tone="neutro"
             hint={formatearFecha(primera.fecha_hora_supervision)}
           />
           <HexKpiCard
-            icon={mejora >= 0 ? IconTrendUp : IconTrendDown}
+            icon={mejora >= 0 ? <IconTrendUp /> : <IconTrendDown />}
             value={`${mejora > 0 ? '+' : ''}${mejora.toFixed(2)}`}
             label="Mejora total"
             tone={mejora >= 0 ? 'dorado' : 'guinda'}
             hint="primera vs última"
           />
           <HexKpiCard
-            icon={IconClipboard}
+            icon={<IconClipboard />}
             value={`${rubrosArr.length}/15`}
             label="Rubros evaluados"
             tone="guinda"

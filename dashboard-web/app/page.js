@@ -93,26 +93,26 @@ export default async function HomePage() {
         {/* KPIs hexagonales */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
           <HexKpiCard
-            icon={IconBuilding}
+            icon={<IconBuilding />}
             value={centros.length}
             label="Centros evaluados"
             tone="guinda"
           />
           <HexKpiCard
-            icon={IconClipboard}
+            icon={<IconClipboard />}
             value={totalSups}
             label="Total supervisiones"
             tone="dorado"
           />
           <HexKpiCard
-            icon={IconChart}
+            icon={<IconChart />}
             value={promGlobal.toFixed(2)}
             label="Promedio global"
             tone={promGlobal >= 8 ? 'dorado' : 'guinda'}
             hint={cumplimientoTexto}
           />
           <HexKpiCard
-            icon={IconShield}
+            icon={<IconShield />}
             value={centros.filter((c) => (c.promedioActual ?? 0) >= 8).length}
             label="Centros en óptimo"
             tone="neutro"

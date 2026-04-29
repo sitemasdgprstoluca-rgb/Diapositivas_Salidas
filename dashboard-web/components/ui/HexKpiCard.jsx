@@ -3,18 +3,18 @@
 /**
  * HexKpiCard — Tarjeta KPI con forma hexagonal estilo HUD institucional.
  *
- * El icono se acepta como:
- *  - Componente React (ej: <IconBuilding />) — preferido, line icons SVG
- *  - String (ej: "🏛️") — fallback emoji
+ * El icono se acepta como ReactElement ya renderizado, ej:
+ *   <HexKpiCard icon={<IconBuilding />} ... />
+ * (Functions NO se pueden pasar de Server a Client Component.)
  *
  * Props:
  *  - value: número o string a destacar
  *  - label: descripción corta
- *  - icon: componente React o string
+ *  - icon: ReactElement (preferido) o string (emoji fallback)
  *  - tone: "guinda" | "dorado" | "neutro"
  *  - hint: línea pequeña adicional bajo el label (opcional)
  */
-export default function HexKpiCard({ value, label, icon: Icon, tone = 'guinda', hint }) {
+export default function HexKpiCard({ value, label, icon, tone = 'guinda', hint }) {
   const palette = {
     guinda: {
       glow: 'rgba(159, 34, 65, 0.45)',
@@ -44,11 +44,11 @@ export default function HexKpiCard({ value, label, icon: Icon, tone = 'guinda', 
 
   const p = palette[tone] || palette.guinda;
 
-  // Permitir tanto componentes como strings (emoji)
-  const iconNode = Icon
-    ? typeof Icon === 'function'
-      ? <Icon width={20} height={20} style={{ color: p.iconColor }} />
-      : <span className="text-base" style={{ color: p.iconColor }}>{Icon}</span>
+  // El icono puede ser ReactElement (preferido) o string (emoji)
+  const iconNode = icon
+    ? typeof icon === 'string'
+      ? <span className="text-base" style={{ color: p.iconColor }}>{icon}</span>
+      : <span style={{ color: p.iconColor, display: 'inline-flex' }}>{icon}</span>
     : null;
 
   return (
