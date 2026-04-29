@@ -200,3 +200,122 @@ export function generarInsights(ranking, seriesPorCentro, radarData, evolucionDa
     regla5Prediccion(seriesPorCentro, evolucionData),
   ].filter((insight) => insight !== null);
 }
+
+/**
+ * Agrupa supervisiones por centro, ordenadas cronológicamente,
+ * normalizando la forma cruda de Supabase a `{fecha, promedio, id, fechaRaw}`.
+ *
+ * @param {string[]} seleccionados
+ * @param {Array<{id:string, nombre_cprs:string, fecha_hora_supervision:string, promedio_general:number|string|null}>} todasSups
+ * @returns {Object<string, Array<{fecha:string, promedio:number, id:string, fechaRaw:string}>>}
+ */
+export function generarSeriesPorCentro(seleccionados, todasSups) {
+  const map = {};
+  for (const nombre of seleccionados) {
+    map[nombre] = todasSups
+      .filter((s) => s.nombre_cprs === nombre)
+      .slice() // clona para no mutar inputs frozen
+      .sort(
+        (a, b) =>
+          new Date(a.fecha_hora_supervision) - new Date(b.fecha_hora_supervision)
+      )
+      .map((s) => ({
+        fecha: new Date(s.fecha_hora_supervision).toLocaleDateString('es-MX', {
+          day: '2-digit',
+          month: 'short',
+        }),
+        promedio: Number(s.promedio_general || 0),
+        id: s.id,
+        fechaRaw: s.fecha_hora_supervision,
+      }));
+  }
+  return map;
+}
+
+/**
+ * Construye los datos del radar comparativo: cada entrada representa
+ * un rubro con la calificación que cada centro dio en su última
+ * supervisión. Los rubros marcados `no_aplica` se excluyen.
+ * Nombres >18 caracteres se truncan a 16+'…'.
+ *
+ * @param {string[]} seleccionados
+ * @param {Object<string, Array<{id:string}>>} seriesPorCentro
+ * @param {Object<string, Array<{rubro_catalog_id:string, nombre:string, orden:number, calificacion:number, no_aplica:boolean}>>} rubrosPorSup
+ * @returns {Array<{rubro:string, orden:number, [centro:string]:number}>}
+ */
+export function calcularRadarData(seleccionados, seriesPorCentro, rubrosPorSup) {
+  const rubros = new Map();
+  for (const nombre of seleccionados) {
+    const serie = seriesPorCentro[nombre] || [];
+    const ultimaSup = serie[serie.length - 1];
+    if (!ultimaSup) continue;
+    const rs = (rubrosPorSup[ultimaSup.id] || []).filter((r) => !r.no_aplica);
+    for (const r of rs) {
+      if (!rubros.has(r.rubro_catalog_id)) {
+        rubros.set(r.rubro_catalog_id, {
+          rubro: r.nombre.length > 18 ? r.nombre.substring(0, 16) + '…' : r.nombre,
+          orden: r.orden,
+        });
+      }
+      rubros.get(r.rubro_catalog_id)[nombre] = r.calificacion || 0;
+    }
+  }
+  return Array.from(rubros.values()).sort((a, b) => (a.orden || 0) - (b.orden || 0));
+}
+
+/**
+ * Construye la matriz temporal para la gráfica de evolución, con una
+ * fila por cada fecha distinta + una fila final "Próx. estim." con la
+ * proyección de cada centro que tenga ≥2 visitas.
+ *
+ * @param {string[]} seleccionados
+ * @param {Object<string, Array<{promedio:number, fechaRaw:string}>>} seriesPorCentro
+ * @returns {{rows: Array<Object>, ultimaFechaReal: string|null, proyecciones: Object<string, number>}}
+ */
+export function generarEvolucionData(seleccionados, seriesPorCentro) {
+  const proyecciones = {};
+  const todasLasFechas = new Set();
+  const indexPorCentroYFecha = {};
+
+  for (const nombre of seleccionados) {
+    const serie = seriesPorCentro[nombre] || [];
+    indexPorCentroYFecha[nombre] = {};
+    for (const s of serie) {
+      todasLasFechas.add(s.fechaRaw);
+      indexPorCentroYFecha[nombre][s.fechaRaw] = s.promedio;
+    }
+    if (serie.length >= 2) {
+      const proy = proyectarSiguiente(serie.map((s) => s.promedio));
+      if (proy != null) proyecciones[nombre] = proy;
+    }
+  }
+
+  const ordenadas = Array.from(todasLasFechas).sort(
+    (a, b) => new Date(a) - new Date(b)
+  );
+  const rows = ordenadas.map((fechaRaw) => {
+    const row = {
+      fecha: new Date(fechaRaw).toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: 'short',
+        year: '2-digit',
+      }),
+    };
+    for (const nombre of seleccionados) {
+      row[nombre] = indexPorCentroYFecha[nombre][fechaRaw] ?? null;
+    }
+    return row;
+  });
+
+  const ultimaFechaReal = rows[rows.length - 1]?.fecha || null;
+
+  if (Object.keys(proyecciones).length > 0) {
+    const rowProy = { fecha: 'Próx. estim.' };
+    for (const nombre of seleccionados) {
+      rowProy[nombre] = proyecciones[nombre] ?? null;
+    }
+    rows.push(rowProy);
+  }
+
+  return { rows, ultimaFechaReal, proyecciones };
+}

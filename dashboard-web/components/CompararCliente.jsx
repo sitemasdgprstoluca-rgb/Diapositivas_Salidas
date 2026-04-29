@@ -6,10 +6,11 @@ import EvolucionConPrediccion from './analytics/EvolucionConPrediccion';
 import RankingGeneral from './analytics/RankingGeneral';
 import InsightsIA from './analytics/InsightsIA';
 import {
-  stdDev,
-  proyectarSiguiente,
   calcularRanking,
   generarInsights,
+  generarSeriesPorCentro,
+  calcularRadarData,
+  generarEvolucionData,
 } from '@/lib/analytics';
 
 const PALETA = ['#D4A94C', '#C64864', '#7CB342', '#1565C0', '#E65100', '#6A1B9A', '#00838F'];
@@ -27,23 +28,11 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
     );
   };
 
-  // Datos por centro: array de { fecha, promedio, supId }
-  const seriesPorCentro = useMemo(() => {
-    const map = {};
-    for (const nombre of seleccionados) {
-      const sups = todasSups
-        .filter((s) => s.nombre_cprs === nombre)
-        .sort((a, b) => new Date(a.fecha_hora_supervision) - new Date(b.fecha_hora_supervision))
-        .map((s) => ({
-          fecha: new Date(s.fecha_hora_supervision).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }),
-          promedio: Number(s.promedio_general || 0),
-          id: s.id,
-          fechaRaw: s.fecha_hora_supervision,
-        }));
-      map[nombre] = sups;
-    }
-    return map;
-  }, [seleccionados, todasSups]);
+  // Datos por centro: array de { fecha, promedio, id, fechaRaw }
+  const seriesPorCentro = useMemo(
+    () => generarSeriesPorCentro(seleccionados, todasSups),
+    [seleccionados, todasSups]
+  );
 
   // Ranking con delta vs primera visita
   const ranking = useMemo(
@@ -51,83 +40,17 @@ export default function CompararCliente({ centrosDisponibles, todasSups, rubrosP
     [seleccionados, seriesPorCentro]
   );
 
-  // Evolución temporal unificada con proyección
-  const evolucionData = useMemo(() => {
-    const fechas = new Set();
-    const proyecciones = {};
+  // Evolución temporal unificada con proyección lineal de la próxima visita
+  const evolucionData = useMemo(
+    () => generarEvolucionData(seleccionados, seriesPorCentro),
+    [seleccionados, seriesPorCentro]
+  );
 
-    for (const nombre of seleccionados) {
-      const serie = seriesPorCentro[nombre] || [];
-      serie.forEach((s) => fechas.add(s.fecha));
-      const proy = proyectarSiguiente(serie.map((s) => s.promedio));
-      if (proy != null && serie.length >= 2) {
-        proyecciones[nombre] = proy;
-      }
-    }
-
-    const fechasOrdenadas = Array.from(fechas).sort(
-      (a, b) => {
-        // parsear "17 abr" etc. Como ya están ordenadas por serie, usamos el primer orden
-        return 0;
-      }
-    );
-
-    // Recomponer con orden temporal real usando fechaRaw
-    const todasLasFechas = new Set();
-    const indexPorCentroYFecha = {};
-    for (const nombre of seleccionados) {
-      indexPorCentroYFecha[nombre] = {};
-      (seriesPorCentro[nombre] || []).forEach((s) => {
-        todasLasFechas.add(s.fechaRaw);
-        indexPorCentroYFecha[nombre][s.fechaRaw] = s.promedio;
-      });
-    }
-
-    const ordenadas = Array.from(todasLasFechas).sort((a, b) => new Date(a) - new Date(b));
-    const rows = ordenadas.map((fechaRaw) => {
-      const row = {
-        fecha: new Date(fechaRaw).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: '2-digit' }),
-      };
-      for (const nombre of seleccionados) {
-        row[nombre] = indexPorCentroYFecha[nombre][fechaRaw] ?? null;
-      }
-      return row;
-    });
-
-    const ultimaFechaReal = rows[rows.length - 1]?.fecha || null;
-
-    // Agregar punto de proyección (próxima visita estimada)
-    if (Object.keys(proyecciones).length > 0) {
-      const rowProy = { fecha: 'Próx. estim.' };
-      for (const nombre of seleccionados) {
-        rowProy[nombre] = proyecciones[nombre] ?? null;
-      }
-      rows.push(rowProy);
-    }
-
-    return { rows, ultimaFechaReal, proyecciones };
-  }, [seleccionados, seriesPorCentro]);
-
-  // Datos para radar (última supervisión por centro, promedio por rubro)
-  const radarData = useMemo(() => {
-    const rubros = new Map();
-    for (const nombre of seleccionados) {
-      const serie = seriesPorCentro[nombre] || [];
-      const ultimaSup = serie[serie.length - 1];
-      if (!ultimaSup) continue;
-      const rs = (rubrosPorSup[ultimaSup.id] || []).filter((r) => !r.no_aplica);
-      for (const r of rs) {
-        if (!rubros.has(r.rubro_catalog_id)) {
-          rubros.set(r.rubro_catalog_id, {
-            rubro: r.nombre.length > 18 ? r.nombre.substring(0, 16) + '…' : r.nombre,
-            orden: r.orden,
-          });
-        }
-        rubros.get(r.rubro_catalog_id)[nombre] = r.calificacion || 0;
-      }
-    }
-    return Array.from(rubros.values()).sort((a, b) => (a.orden || 0) - (b.orden || 0));
-  }, [seleccionados, seriesPorCentro, rubrosPorSup]);
+  // Datos para radar (última supervisión por centro, calificación por rubro)
+  const radarData = useMemo(
+    () => calcularRadarData(seleccionados, seriesPorCentro, rubrosPorSup),
+    [seleccionados, seriesPorCentro, rubrosPorSup]
+  );
 
   // Insights de IA calculados automáticamente (5 reglas, ver lib/analytics.js)
   const insights = useMemo(

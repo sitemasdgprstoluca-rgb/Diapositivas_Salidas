@@ -18,6 +18,9 @@ import {
   regla3Consistencia,
   regla4Oportunidad,
   regla5Prediccion,
+  generarSeriesPorCentro,
+  calcularRadarData,
+  generarEvolucionData,
 } from '@/lib/analytics';
 
 /** Helper para construir un punto de la serie */
@@ -692,5 +695,358 @@ describe('regla5Prediccion — proyección con |delta|>0.1', () => {
     const out = regla5Prediccion(series, evolucion);
     expect(out.descripcion).toContain('B');
     expect(out.descripcion).toContain('7.80');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Transformaciones de datos crudos a estructuras del dashboard
+// ═══════════════════════════════════════════════════════════════════
+
+describe('generarSeriesPorCentro — agrupa supervisiones por centro', () => {
+  /** Helper para construir una supervisión cruda (forma de Supabase). */
+  const sup = (id, nombre_cprs, fecha_hora_supervision, promedio_general) => ({
+    id,
+    nombre_cprs,
+    fecha_hora_supervision,
+    promedio_general,
+  });
+
+  it('seleccionados=[] → {}', () => {
+    expect(generarSeriesPorCentro([], [])).toEqual({});
+  });
+
+  it('todasSups=[] → cada centro mapea a []', () => {
+    expect(generarSeriesPorCentro(['A', 'B'], [])).toEqual({ A: [], B: [] });
+  });
+
+  it('mapea solo las supervisiones del centro pedido', () => {
+    const sups = [
+      sup('1', 'A', '2026-01-01T10:00:00Z', 7),
+      sup('2', 'B', '2026-01-02T10:00:00Z', 8),
+      sup('3', 'A', '2026-01-03T10:00:00Z', 9),
+    ];
+    const result = generarSeriesPorCentro(['A'], sups);
+    expect(result.A).toHaveLength(2);
+    expect(result.A.map((s) => s.id)).toEqual(['1', '3']);
+  });
+
+  it('ordena por fecha ascendente', () => {
+    const sups = [
+      sup('3', 'A', '2026-03-01T10:00:00Z', 7),
+      sup('1', 'A', '2026-01-01T10:00:00Z', 5),
+      sup('2', 'A', '2026-02-01T10:00:00Z', 6),
+    ];
+    const result = generarSeriesPorCentro(['A'], sups);
+    expect(result.A.map((s) => s.id)).toEqual(['1', '2', '3']);
+  });
+
+  it('cada item tiene shape {fecha, promedio, id, fechaRaw}', () => {
+    const sups = [sup('x', 'A', '2026-04-15T00:00:00Z', 7.5)];
+    const result = generarSeriesPorCentro(['A'], sups);
+    expect(result.A[0]).toEqual({
+      fecha: expect.any(String),
+      promedio: 7.5,
+      id: 'x',
+      fechaRaw: '2026-04-15T00:00:00Z',
+    });
+  });
+
+  it('promedio_general null/undefined → 0', () => {
+    const sups = [
+      sup('1', 'A', '2026-01-01T00:00:00Z', null),
+      sup('2', 'A', '2026-02-01T00:00:00Z', undefined),
+    ];
+    const result = generarSeriesPorCentro(['A'], sups);
+    expect(result.A[0].promedio).toBe(0);
+    expect(result.A[1].promedio).toBe(0);
+  });
+
+  it('promedio_general como string numérico → Number', () => {
+    const sups = [sup('1', 'A', '2026-01-01T00:00:00Z', '7.71')];
+    const result = generarSeriesPorCentro(['A'], sups);
+    expect(result.A[0].promedio).toBe(7.71);
+  });
+
+  it('múltiples centros, cada uno con sus supervisiones', () => {
+    const sups = [
+      sup('1', 'A', '2026-01-01T00:00:00Z', 7),
+      sup('2', 'B', '2026-01-01T00:00:00Z', 8),
+      sup('3', 'A', '2026-02-01T00:00:00Z', 6),
+    ];
+    const result = generarSeriesPorCentro(['A', 'B'], sups);
+    expect(result.A).toHaveLength(2);
+    expect(result.B).toHaveLength(1);
+  });
+
+  it('centro inexistente en sups → []', () => {
+    const sups = [sup('1', 'A', '2026-01-01T00:00:00Z', 7)];
+    const result = generarSeriesPorCentro(['Z'], sups);
+    expect(result.Z).toEqual([]);
+  });
+
+  it('no muta los inputs (Object.freeze no lanza)', () => {
+    const seleccionados = Object.freeze(['A']);
+    const sups = Object.freeze([
+      Object.freeze(sup('1', 'A', '2026-01-01T00:00:00Z', 7)),
+    ]);
+    expect(() => generarSeriesPorCentro(seleccionados, sups)).not.toThrow();
+  });
+});
+
+describe('calcularRadarData — datos para radar de rubros', () => {
+  const punto = (promedio, id) => ({
+    promedio,
+    fechaRaw: '2026-01-01T00:00:00Z',
+    fecha: '01 ene',
+    id,
+  });
+
+  const rubro = (catalog_id, nombre, orden, calificacion, no_aplica = false) => ({
+    rubro_catalog_id: catalog_id,
+    nombre,
+    orden,
+    calificacion,
+    no_aplica,
+  });
+
+  it('seleccionados=[] → []', () => {
+    expect(calcularRadarData([], {}, {})).toEqual([]);
+  });
+
+  it('centro sin serie → skip silenciosamente', () => {
+    expect(calcularRadarData(['A'], {}, {})).toEqual([]);
+  });
+
+  it('1 centro con 1 rubro → array con 1 entrada', () => {
+    const series = { A: [punto(7, 'sup1')] };
+    const rubros = { sup1: [rubro('cocina', 'Cocina', 4, 8)] };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result).toEqual([{ rubro: 'Cocina', orden: 4, A: 8 }]);
+  });
+
+  it('toma la última supervisión del centro (no la primera)', () => {
+    const series = { A: [punto(5, 'old'), punto(8, 'new')] };
+    const rubros = {
+      old: [rubro('x', 'X', 1, 5)],
+      new: [rubro('x', 'X', 1, 9)],
+    };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result).toEqual([{ rubro: 'X', orden: 1, A: 9 }]);
+  });
+
+  it('filtra rubros con no_aplica=true', () => {
+    const series = { A: [punto(7, 'sup1')] };
+    const rubros = {
+      sup1: [
+        rubro('na', 'NoAplica', 1, null, true),
+        rubro('si', 'SiAplica', 2, 8),
+      ],
+    };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result).toEqual([{ rubro: 'SiAplica', orden: 2, A: 8 }]);
+  });
+
+  it('calificación null/undefined → 0', () => {
+    const series = { A: [punto(7, 'sup1')] };
+    const rubros = { sup1: [rubro('x', 'X', 1, null)] };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result[0].A).toBe(0);
+  });
+
+  it('nombre de rubro >18 chars se trunca a 16 + "…"', () => {
+    const series = { A: [punto(7, 'sup1')] };
+    const rubros = {
+      sup1: [rubro('x', 'NombreDeRubroDemasiadoLargoParaCaber', 1, 8)],
+    };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result[0].rubro).toBe('NombreDeRubroDem…');
+    expect(result[0].rubro.length).toBe(17); // 16 + 1 char "…"
+  });
+
+  it('nombre de rubro de exactamente 18 chars NO se trunca', () => {
+    const series = { A: [punto(7, 'sup1')] };
+    const nombre18 = '123456789012345678'; // 18 chars
+    const rubros = { sup1: [rubro('x', nombre18, 1, 8)] };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result[0].rubro).toBe(nombre18);
+  });
+
+  it('orden ascendente sobre el campo orden', () => {
+    const series = { A: [punto(7, 'sup1')] };
+    const rubros = {
+      sup1: [
+        rubro('c', 'C', 3, 8),
+        rubro('a', 'A', 1, 6),
+        rubro('b', 'B', 2, 7),
+      ],
+    };
+    const result = calcularRadarData(['A'], series, rubros);
+    expect(result.map((r) => r.rubro)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('múltiples centros: agrega columna por centro al mismo rubro', () => {
+    const series = {
+      A: [punto(7, 'a1')],
+      B: [punto(8, 'b1')],
+    };
+    const rubros = {
+      a1: [rubro('cocina', 'Cocina', 1, 7)],
+      b1: [rubro('cocina', 'Cocina', 1, 9)],
+    };
+    const result = calcularRadarData(['A', 'B'], series, rubros);
+    expect(result).toEqual([{ rubro: 'Cocina', orden: 1, A: 7, B: 9 }]);
+  });
+
+  it('rubro presente en un centro pero no en otro: solo la columna del que lo tiene', () => {
+    const series = {
+      A: [punto(7, 'a1')],
+      B: [punto(8, 'b1')],
+    };
+    const rubros = {
+      a1: [rubro('x', 'X', 1, 7)],
+      b1: [rubro('y', 'Y', 2, 9)],
+    };
+    const result = calcularRadarData(['A', 'B'], series, rubros);
+    expect(result).toHaveLength(2);
+    const x = result.find((r) => r.rubro === 'X');
+    const y = result.find((r) => r.rubro === 'Y');
+    expect(x.A).toBe(7);
+    expect(x.B).toBeUndefined();
+    expect(y.B).toBe(9);
+    expect(y.A).toBeUndefined();
+  });
+
+  it('no muta inputs', () => {
+    const series = Object.freeze({ A: Object.freeze([punto(7, 'sup1')]) });
+    const rubros = Object.freeze({ sup1: Object.freeze([rubro('x', 'X', 1, 8)]) });
+    expect(() => calcularRadarData(['A'], series, rubros)).not.toThrow();
+  });
+});
+
+describe('generarEvolucionData — matriz temporal con proyecciones', () => {
+  const punto = (promedio, fechaRaw, id = 'id-' + Math.random()) => ({
+    promedio,
+    fechaRaw,
+    fecha: '?',
+    id,
+  });
+
+  it('seleccionados=[] → rows=[], proyecciones={}, ultimaFechaReal=null', () => {
+    const result = generarEvolucionData([], {});
+    expect(result.rows).toEqual([]);
+    expect(result.proyecciones).toEqual({});
+    expect(result.ultimaFechaReal).toBeNull();
+  });
+
+  it('1 centro con 1 visita: 1 row, sin proyección (requiere ≥2 puntos)', () => {
+    const series = { A: [punto(7, '2026-01-15T00:00:00Z')] };
+    const result = generarEvolucionData(['A'], series);
+    expect(result.rows).toHaveLength(1);
+    expect(result.proyecciones).toEqual({});
+    expect(result.ultimaFechaReal).toBe(result.rows[0].fecha);
+  });
+
+  it('1 centro con 2 visitas: 2 rows + 1 row de proyección', () => {
+    const series = {
+      A: [
+        punto(6, '2026-01-01T00:00:00Z'),
+        punto(7, '2026-02-01T00:00:00Z'),
+      ],
+    };
+    const result = generarEvolucionData(['A'], series);
+    // 2 fechas reales + 1 fila "Próx. estim."
+    expect(result.rows).toHaveLength(3);
+    expect(result.rows[2].fecha).toBe('Próx. estim.');
+    // proyectarSiguiente([6,7]) = 8
+    expect(result.rows[2].A).toBe(8);
+    expect(result.proyecciones.A).toBe(8);
+  });
+
+  it('rows ordenados cronológicamente por fechaRaw', () => {
+    const series = {
+      A: [
+        punto(7, '2026-03-01T00:00:00Z'),
+        punto(5, '2026-01-01T00:00:00Z'),
+        punto(6, '2026-02-01T00:00:00Z'),
+      ],
+    };
+    const result = generarEvolucionData(['A'], series);
+    expect(result.rows.slice(0, 3).map((r) => r.A)).toEqual([5, 6, 7]);
+  });
+
+  it('múltiples centros: cada row tiene una columna por centro', () => {
+    const series = {
+      A: [punto(6, '2026-01-01T00:00:00Z'), punto(7, '2026-02-01T00:00:00Z')],
+      B: [punto(8, '2026-01-01T00:00:00Z'), punto(9, '2026-02-01T00:00:00Z')],
+    };
+    const result = generarEvolucionData(['A', 'B'], series);
+    // 2 fechas reales + 1 proyección
+    expect(result.rows).toHaveLength(3);
+    expect(result.rows[0].A).toBe(6);
+    expect(result.rows[0].B).toBe(8);
+    expect(result.rows[1].A).toBe(7);
+    expect(result.rows[1].B).toBe(9);
+  });
+
+  it('centro sin valor en una fecha → null en esa columna', () => {
+    const series = {
+      A: [punto(6, '2026-01-01T00:00:00Z')],
+      B: [punto(8, '2026-02-01T00:00:00Z')],
+    };
+    const result = generarEvolucionData(['A', 'B'], series);
+    expect(result.rows).toHaveLength(2);
+    // Row 1 (2026-01-01): A=6, B=null
+    const row1 = result.rows[0];
+    expect(row1.A).toBe(6);
+    expect(row1.B).toBeNull();
+    // Row 2 (2026-02-01): A=null, B=8
+    const row2 = result.rows[1];
+    expect(row2.A).toBeNull();
+    expect(row2.B).toBe(8);
+  });
+
+  it('ultimaFechaReal apunta a la última row real, NO a la de proyección', () => {
+    const series = {
+      A: [punto(6, '2026-01-01T00:00:00Z'), punto(7, '2026-02-01T00:00:00Z')],
+    };
+    const result = generarEvolucionData(['A'], series);
+    // Hay 3 rows: 2 reales + 1 proyección. ultimaFechaReal = fecha de la 2da row
+    expect(result.ultimaFechaReal).toBe(result.rows[1].fecha);
+    expect(result.ultimaFechaReal).not.toBe('Próx. estim.');
+  });
+
+  it('si ningún centro tiene ≥2 visitas, no agrega row de proyección', () => {
+    const series = {
+      A: [punto(7, '2026-01-01T00:00:00Z')],
+      B: [punto(8, '2026-02-01T00:00:00Z')],
+    };
+    const result = generarEvolucionData(['A', 'B'], series);
+    expect(result.proyecciones).toEqual({});
+    // No row "Próx. estim."
+    expect(result.rows.find((r) => r.fecha === 'Próx. estim.')).toBeUndefined();
+  });
+
+  it('mezcla: 1 centro con proyección, otro sin → solo el primero proyecta', () => {
+    const series = {
+      A: [punto(6, '2026-01-01T00:00:00Z'), punto(7, '2026-02-01T00:00:00Z')], // proyecta
+      B: [punto(8, '2026-02-01T00:00:00Z')], // no proyecta
+    };
+    const result = generarEvolucionData(['A', 'B'], series);
+    expect(result.proyecciones.A).toBe(8);
+    expect(result.proyecciones.B).toBeUndefined();
+    // La row de proyección tiene A definido y B null
+    const proyRow = result.rows.find((r) => r.fecha === 'Próx. estim.');
+    expect(proyRow.A).toBe(8);
+    expect(proyRow.B).toBeNull();
+  });
+
+  it('no muta inputs', () => {
+    const series = Object.freeze({
+      A: Object.freeze([
+        punto(6, '2026-01-01T00:00:00Z'),
+        punto(7, '2026-02-01T00:00:00Z'),
+      ]),
+    });
+    expect(() => generarEvolucionData(['A'], series)).not.toThrow();
   });
 });
