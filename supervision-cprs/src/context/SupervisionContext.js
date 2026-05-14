@@ -179,14 +179,14 @@ export function SupervisionProvider({ children }) {
   const guardarSupervision = useCallback(async (estado = 'borrador') => {
     if (!state.supervisionActual) return null;
 
-    dispatch({ type: ACTIONS.SET_CARGANDO, payload: true });
     try {
       const supervisionGuardada = await guardarEnStorage({
         ...state.supervisionActual,
         estado,
       });
       dispatch({ type: ACTIONS.SET_SUPERVISION_ACTUAL, payload: supervisionGuardada });
-      await cargarSupervisiones();
+      // Recargar lista en background sin bloquear el caller con cargando=true
+      cargarSupervisiones().catch(() => {});
       return supervisionGuardada;
     } catch (error) {
       dispatch({ type: ACTIONS.SET_ERROR, payload: error.message });

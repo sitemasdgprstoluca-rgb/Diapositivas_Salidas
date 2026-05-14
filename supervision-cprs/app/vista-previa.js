@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { LoadingModal } from '../src/components';
-import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
+import ThemeToggle from '../src/components/ThemeToggle';
+import { useTheme } from '../src/context/ThemeContext';
+import { SIZES, SHADOWS } from '../src/constants/theme';
 import { 
   formatearFechaCompleta, 
   formatearFechaDiaMes, 
@@ -32,6 +34,9 @@ import { calcularPromedioGeneral, colorPorCalificacion } from '../src/constants/
 
 export default function VistaPreviaScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { id } = useLocalSearchParams();
   const { 
     supervisionActual, 
@@ -57,8 +62,7 @@ export default function VistaPreviaScreen() {
   };
 
   const handleVolverDatos = () => {
-    router.back();
-    router.back();
+    router.dismiss(2);
   };
 
   const handleIrInicio = async () => {
@@ -210,11 +214,14 @@ export default function VistaPreviaScreen() {
       >
         <View style={styles.headerButtons}>
           <TouchableOpacity style={styles.backButton} onPress={handleVolver}>
-            <Text style={styles.backButtonText}>←</Text>
+            <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.homeButton} onPress={handleIrInicio}>
-            <Ionicons name="home-outline" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <ThemeToggle light />
+            <TouchableOpacity style={styles.homeButton} onPress={handleIrInicio}>
+              <Ionicons name="home-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.headerContent}>
           <View style={styles.stepBadge}>
@@ -376,7 +383,10 @@ export default function VistaPreviaScreen() {
           style={styles.footerButtonOutline}
           onPress={handleVolver}
         >
-          <Text style={styles.footerButtonOutlineText}>← Áreas</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="arrow-back" size={14} color={COLORS.primary} />
+              <Text style={styles.footerButtonOutlineText}>Áreas</Text>
+            </View>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.pdfButtonContainer}
@@ -428,14 +438,14 @@ export default function VistaPreviaScreen() {
 }
 
 // Componente auxiliar para filas de datos
-const DataRow = ({ label, value }) => (
+const DataRow = ({ label, value, styles }) => (
   <View style={styles.dataRow}>
     <Text style={styles.dataLabel}>{label}</Text>
     <Text style={styles.dataValue}>{value || '—'}</Text>
   </View>
 );
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -973,10 +983,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-  },
-  homeButtonText: {
-    color: COLORS.white,
-    fontSize: SIZES.base,
-    fontWeight: '700',
   },
 });

@@ -179,15 +179,35 @@ export default function DatosGeneralesScreen() {
         { 
           text: 'Guardar', 
           onPress: async () => {
-            await guardarSupervision('borrador');
-            router.back();
+            setGuardando(true);
+            try {
+              const resultado = await guardarSupervision('borrador');
+              if (resultado === null || resultado === false) {
+                Alert.alert('Error', 'No se pudo guardar la supervisión.');
+                return;
+              }
+              router.back();
+            } finally {
+              setGuardando(false);
+            }
           }
         },
       ]
     );
   };
 
-  if (cargando || !supervisionActual) {
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleVolver();
+        return true;
+      };
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [supervisionActual, guardando])
+  );
+
+  if ((cargando && !guardando) || !supervisionActual) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Cargando...</Text>

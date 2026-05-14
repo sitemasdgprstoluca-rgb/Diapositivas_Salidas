@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const MENSAJES_PPTX = [
   'Preparando presentación...',
@@ -28,6 +28,9 @@ const MENSAJES_PDF = [
 ];
 
 export default function LoadingModal({ visible, tipo = 'pptx' }) {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [mensajeIndex, setMensajeIndex] = useState(0);
   const fadeAnim = useState(new Animated.Value(1))[0];
   
@@ -101,7 +104,7 @@ export default function LoadingModal({ visible, tipo = 'pptx' }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -109,7 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   container: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
@@ -119,6 +122,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 15,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: COLORS.borderSubtle,
   },
   iconContainer: {
     width: 80,
@@ -144,15 +149,13 @@ const styles = StyleSheet.create({
   },
   mensaje: {
     fontSize: 16,
-    color: COLORS.textPrimary,
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 16,
     fontWeight: '500',
   },
   aviso: {
     fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
     fontStyle: 'italic',
   },
 });
