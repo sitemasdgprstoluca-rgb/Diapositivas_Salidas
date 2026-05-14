@@ -53,11 +53,12 @@ export default function VistaPreviaScreen() {
   const areas = supervisionActual?.areas || [];
 
   const handleVolver = () => {
-    router.push('/areas');
+    router.back();
   };
 
   const handleVolverDatos = () => {
-    router.push('/datos-generales');
+    router.back();
+    router.back();
   };
 
   const handleIrInicio = async () => {
