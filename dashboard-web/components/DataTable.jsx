@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
@@ -211,14 +212,21 @@ export default function DataTable({
       )}
 
       {/* Tabla */}
-      <div className="overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--border-subtle)' }}>
+      <div
+        className="overflow-x-auto rounded-xl border"
+        style={{
+          borderColor: 'var(--table-border)',
+          background: 'var(--bg-card)',
+          backdropFilter: 'blur(8px)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
         <table className="w-full text-sm">
           <thead>
             <tr
-              className="border-b"
               style={{
-                borderColor: 'var(--border-subtle)',
-                background: 'var(--bg-muted)',
+                borderBottom: '2px solid var(--border-accent)',
+                background: 'var(--table-header-bg)',
               }}
             >
               {columns.map((col) => {
@@ -228,8 +236,8 @@ export default function DataTable({
                   <th
                     key={col.key}
                     onClick={() => toggleSort(col.key, sortable)}
-                    className={`px-4 py-3 text-[10.5px] font-bold uppercase tracking-[0.16em] select-none ${
-                      sortable ? 'cursor-pointer' : ''
+                    className={`px-4 py-3.5 text-[10.5px] font-bold uppercase tracking-[0.16em] select-none transition-colors ${
+                      sortable ? 'cursor-pointer hover:text-[color:var(--brand-primary)]' : ''
                     } ${
                       col.align === 'center'
                         ? 'text-center'
@@ -237,7 +245,7 @@ export default function DataTable({
                           ? 'text-right'
                           : 'text-left'
                     }`}
-                    style={{ color: 'var(--text-secondary)' }}
+                    style={{ color: 'var(--table-header-text)' }}
                   >
                     <span className={`inline-flex items-center gap-1.5 ${
                       col.align === 'center' ? 'justify-center w-full' : col.align === 'right' ? 'justify-end w-full' : ''
@@ -275,19 +283,24 @@ export default function DataTable({
               pageRows.map((row, i) => {
                 const k = rowKey ? rowKey(row, pageStart + i) : `r-${pageStart + i}`;
                 const clickable = !!onRowClick;
+                const altBg = i % 2 === 1 ? 'var(--table-row-alt)' : 'transparent';
                 return (
-                  <tr
+                  <motion.tr
                     key={k}
                     onClick={clickable ? () => onRowClick(row) : undefined}
-                    className={`border-b transition-colors ${clickable ? 'cursor-pointer' : ''}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, delay: Math.min(i, 12) * 0.018, ease: 'easeOut' }}
+                    className={`transition-colors ${clickable ? 'cursor-pointer' : ''}`}
                     style={{
-                      borderColor: 'var(--border-subtle)',
+                      borderBottom: '1px solid var(--table-border)',
+                      background: altBg,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--hover-bg)';
+                      e.currentTarget.style.background = 'var(--table-row-hover)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.background = altBg;
                     }}
                   >
                     {columns.map((col) => {
@@ -304,7 +317,7 @@ export default function DataTable({
                         </td>
                       );
                     })}
-                  </tr>
+                  </motion.tr>
                 );
               })
             )}

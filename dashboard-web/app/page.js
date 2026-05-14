@@ -107,46 +107,49 @@ export default async function HomePage() {
     <>
       <Header email={user?.email} />
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="bg-orbs max-w-7xl mx-auto px-6 py-12 relative">
         {/* Título institucional */}
-        <div className="mb-10 animate-slide-up">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="inline-block w-10 h-0.5 bg-gradient-to-r from-transparent via-dorado-500 to-dorado-500" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-dorado-300">
+        <div className="mb-12 animate-slide-up">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="inline-block w-12 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#B69566] to-[#9F2241]" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.32em]" style={{ color: 'var(--brand-accent)' }}>
               Centros Penitenciarios · Reinserción Social
             </span>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black tracking-tight leading-none">
-            <span style={{ color: 'var(--text-primary)' }}>Panel </span>
+          <h1 className="text-5xl lg:text-6xl font-black tracking-tight leading-[0.95]">
+            <span className="text-gradient-dark">Panel </span>
             <span className="text-gradient-gold">Institucional</span>
           </h1>
-          <p className="text-lg mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-lg mt-5 max-w-2xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             Vista consolidada de supervisiones, promedios y tendencias por centro.
             Selecciona un centro para ver su histórico completo.
           </p>
         </div>
 
         {/* KPIs hexagonales */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
           <HexKpiCard
             icon={<IconBuilding />}
             value={`${evaluados.length}/${centros.length}`}
             label="Centros evaluados"
             tone="guinda"
             hint={`del catálogo de ${centros.length}`}
+            delay={0.05}
           />
           <HexKpiCard
             icon={<IconClipboard />}
             value={totalSups}
             label="Total supervisiones"
             tone="dorado"
+            delay={0.10}
           />
           <HexKpiCard
             icon={<IconChart />}
-            value={promGlobal.toFixed(2)}
+            value={Number(promGlobal.toFixed(2))}
             label="Promedio global"
-            tone={promGlobal >= 8 ? 'dorado' : 'guinda'}
+            tone={promGlobal >= 8 ? 'verde' : promGlobal >= 6 ? 'ambar' : 'rojo'}
             hint={cumplimientoTexto}
+            delay={0.15}
           />
           <HexKpiCard
             icon={<IconShield />}
@@ -154,6 +157,7 @@ export default async function HomePage() {
             label="Centros en óptimo"
             tone="neutro"
             hint={`de ${evaluados.length} evaluados`}
+            delay={0.20}
           />
         </div>
 
@@ -161,9 +165,17 @@ export default async function HomePage() {
         <HudFrame
           title="Centros penitenciarios"
           subtitle="Filtra por estado, busca por nombre, ordena por cualquier columna"
-          tone="dark"
+          tone="auto"
+          delay={0.25}
           badge={
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-dorado-500/15 border border-dorado-500/30 text-[11px] font-bold text-dorado-300 tabular-nums">
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tabular-nums"
+              style={{
+                background: 'rgba(182, 149, 102, 0.14)',
+                border: '1px solid rgba(182, 149, 102, 0.35)',
+                color: 'var(--brand-accent)',
+              }}
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-dorado-500 animate-pulse" />
               {centros.length} activos
             </span>
