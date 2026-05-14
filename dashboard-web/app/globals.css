@@ -233,8 +233,11 @@ input:-webkit-autofill:active {
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
 .text-theme-primary       { color: var(--brand-primary); }
+.text-theme-primary-hover:hover { color: #7a1a36; }
 .text-theme-accent        { color: var(--brand-accent); }
 .border-theme-primary     { border-color: var(--brand-primary); }
+.bg-theme-gradient        { background: linear-gradient(135deg, #9F2241 0%, #7a1a36 60%, #5a1428 100%); }
+.bg-theme-gradient:hover  { background: linear-gradient(135deg, #b3284a 0%, #8a1f3e 60%, #6a1832 100%); }
 
 /* Para texto adaptativo */
 .text-adaptive            { color: var(--text-primary); }
