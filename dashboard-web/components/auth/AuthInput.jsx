@@ -54,10 +54,10 @@ const AuthInput = forwardRef(function AuthInput(
         <span
           className={`absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center rounded-l-xl transition-all duration-300 pointer-events-none ${
             error
-              ? 'bg-gradient-to-br from-[#fee2e2] to-[#fecaca] text-[#dc2626]'
+              ? 'text-[#dc2626]'
               : focused
                 ? 'bg-gradient-to-br from-[#9F2241] to-[#5C2E37] text-white shadow-md'
-                : 'bg-[#f1f5f9] text-[#94a3b8]'
+                : 'text-[#9F2241]'
           }`}
           style={focused && !error ? { boxShadow: '0 4px 12px -2px rgba(159,34,65,0.40)' } : {}}
         >
@@ -86,12 +86,12 @@ const AuthInput = forwardRef(function AuthInput(
             if (isPassword) detectCaps(e);
             rest.onKeyUp?.(e);
           }}
-          className={`w-full pl-14 ${isPassword ? 'pr-12' : 'pr-4'} py-3.5 text-sm rounded-xl outline-none transition-all duration-300 ${
+          className={`auth-input w-full pl-14 ${isPassword ? 'pr-12' : 'pr-4'} py-3.5 text-sm font-medium rounded-xl outline-none transition-all duration-300 ${
             error
-              ? 'bg-[#fef2f2] border-2 border-[#fca5a5] text-[#7f1d1d] placeholder-[#fca5a5] ring-4 ring-[#fee2e2]'
+              ? 'bg-white border-2 border-[#fca5a5] text-[#7f1d1d] placeholder-[#fca5a5] ring-4 ring-[#fee2e2]'
               : focused
                 ? 'bg-white border-2 border-[#9F2241] text-[#0f172a] placeholder-[#cbd5e1] ring-4 ring-[#9F2241]/10 shadow-lg'
-                : 'bg-[#f8fafc] border-2 border-[#e2e8f0] text-[#0f172a] placeholder-[#94a3b8] hover:border-[#cbd5e1]'
+                : 'bg-white border-2 border-[#e2e8f0] text-[#0f172a] placeholder-[#94a3b8] hover:border-[#9F2241]/50'
           }`}
         />
 

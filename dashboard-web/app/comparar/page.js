@@ -53,22 +53,22 @@ export default async function CompararPage() {
             </span>
           </div>
           <h1 className="text-5xl lg:text-6xl font-black tracking-tight leading-none">
-            <span className="text-white">Comparar </span>
+            <span style={{ color: 'var(--text-primary)' }}>Comparar </span>
             <span className="text-gradient-gold">Centros</span>
           </h1>
-          <p className="text-white/65 text-lg mt-4 max-w-2xl leading-relaxed">
+          <p className="text-lg mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             Analítica cruzada con detección de patrones, evolución vs visitas anteriores
             y proyección por regresión lineal.
           </p>
         </div>
 
         {centrosDisponibles.length === 0 ? (
-          <div className="inst-card-dark p-16 text-center">
-            <div className="text-dorado-300/70 mb-5 flex justify-center">
+          <div className="glass-card p-16 text-center">
+            <div className="mb-5 flex justify-center" style={{ color: 'var(--brand-accent)' }}>
               <IconAntenna width={56} height={56} />
             </div>
-            <h2 className="text-white text-2xl font-bold mb-2">Aún no hay datos</h2>
-            <p className="text-white/55 text-base max-w-md mx-auto">
+            <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Aún no hay datos</h2>
+            <p className="text-base max-w-md mx-auto" style={{ color: 'var(--text-tertiary)' }}>
               Cuando los supervisores finalicen supervisiones desde la app móvil,
               aquí verás analítica en vivo con insights de IA, evolución temporal y proyecciones.
             </p>

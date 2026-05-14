@@ -161,6 +161,60 @@ body {
   color: var(--text-primary);
 }
 
+/* === Form controls adaptativos (select / option / autofill) === */
+/* El popup nativo de <select> hereda el background del propio select.
+   Forzamos blanco en light y guinda muy oscura en dark para que las
+   opciones sean siempre legibles. */
+select {
+  background-color: var(--bg-card-solid);
+  color: var(--text-primary);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-tertiary) 50%),
+    linear-gradient(135deg, var(--text-tertiary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) center,
+    calc(100% - 13px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+}
+select option {
+  background-color: var(--bg-card-solid);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-weight: 500;
+}
+select option:checked,
+select option:hover {
+  background: linear-gradient(0deg, rgba(var(--brand-primary-rgb), 0.18), rgba(var(--brand-primary-rgb), 0.18));
+  color: var(--text-primary);
+}
+
+/* Chrome autofill: mantén bg blanco y texto oscuro en formularios de auth */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  caret-color: #0f172a;
+  transition: background-color 9999s ease-in-out 0s;
+}
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+}
+
+/* AuthInput específico — siempre fondo blanco aunque haya dark mode global */
+.auth-input { background-color: #ffffff !important; }
+.auth-input::placeholder { color: #94a3b8; }
+
 /* Scrollbar institucional */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
