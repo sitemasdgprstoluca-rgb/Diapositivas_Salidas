@@ -40,6 +40,7 @@ module.exports = {
     '^react-native-get-random-values$': '<rootDir>/__tests__/__mocks__/react-native-get-random-values.js',
     '^react-native-url-polyfill/auto$': '<rootDir>/__tests__/__mocks__/react-native-url-polyfill.js',
     '^@supabase/supabase-js$': '<rootDir>/__tests__/__mocks__/supabase-js.js',
+    '^.+/config/supabase$': '<rootDir>/__tests__/__mocks__/supabase-config.js',
     '^@react-native-community/netinfo$': '<rootDir>/__tests__/__mocks__/netinfo.js',
   },
   setupFilesAfterEnv: ['<rootDir>/__tests__/setup.js'],
