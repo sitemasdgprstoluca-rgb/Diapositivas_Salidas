@@ -4,90 +4,151 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  /* Reserva el ancho del scrollbar siempre — evita layout shift al
-     navegar entre páginas con/sin contenido scrolleable */
-  scrollbar-gutter: stable;
+/* ============================================================
+   TOKENS ADAPTATIVOS — Sistema de tema institucional
+   Light = default · Dark = .dark on <html>
+*/
+
+:root {
+  /* Marca */
+  --brand-primary:    #9F2241;
+  --brand-primary-2:  #8B1D38;
+  --brand-primary-3:  #5C2E37;
+  --brand-accent:     #B69566;
+  --brand-accent-2:   #9B6F4A;
+  --brand-accent-3:   #DDC9A3;
+
+  /* Eval */
+  --eval-bueno:   #16a34a;
+  --eval-regular: #ca8a04;
+  --eval-malo:    #dc2626;
+
+  /* LIGHT */
+  --bg-app:         #F8FAFC;
+  --bg-app-2:       #F1F5F9;
+  --bg-card:        #FFFFFF;
+  --bg-card-hover:  #FAF8F5;
+  --bg-elevated:    #FFFFFF;
+  --bg-muted:       #F1F5F9;
+
+  --text-primary:   #1E293B;
+  --text-secondary: #475569;
+  --text-tertiary:  #94A3B8;
+  --text-inverse:   #FFFFFF;
+  --text-accent:    #5C2E37;
+
+  --border-subtle:  #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-strong:  #94A3B8;
+  --border-accent:  rgba(159, 34, 65, 0.20);
+
+  --hover-bg:       rgba(159, 34, 65, 0.06);
+  --active-bg:      rgba(159, 34, 65, 0.12);
+
+  --shadow-card:     0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px 0 rgba(0,0,0,0.04);
+  --shadow-floating: 0 10px 30px -8px rgba(15,23,42,0.16), 0 4px 8px -4px rgba(15,23,42,0.08);
+  --shadow-glow:     0 0 0 1px rgba(159,34,65,0.10), 0 8px 24px -6px rgba(159,34,65,0.18);
+
+  --header-bg: linear-gradient(135deg, #9F2241 0%, #5C2E37 100%);
+  --header-fg: #FFFFFF;
+  --header-border: rgba(182, 149, 102, 0.40);
+
+  --body-bg:
+    radial-gradient(ellipse at 15% 0%, rgba(182,149,102,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(159,34,65,0.06) 0%, transparent 55%),
+    var(--bg-app);
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
+.dark {
+  --bg-app:         #0a0507;
+  --bg-app-2:       #1a0b10;
+  --bg-card:        rgba(15, 6, 8, 0.96);
+  --bg-card-hover:  rgba(26, 11, 16, 0.96);
+  --bg-elevated:    rgba(26, 11, 16, 0.94);
+  --bg-muted:       rgba(255,255,255,0.04);
 
-body {
-  background:
-    radial-gradient(ellipse at 20% 15%, rgba(182, 149, 102, 0.10) 0%, transparent 45%),
-    radial-gradient(ellipse at 80% 85%, rgba(159, 34, 65, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 50%, rgba(74, 26, 46, 0.35) 0%, transparent 60%),
+  --text-primary:   #f8fafc;
+  --text-secondary: rgba(248, 250, 252, 0.75);
+  --text-tertiary:  rgba(248, 250, 252, 0.45);
+  --text-inverse:   #0a0507;
+  --text-accent:    #DDC9A3;
+
+  --border-subtle:  rgba(255,255,255,0.08);
+  --border-default: rgba(255,255,255,0.15);
+  --border-strong:  rgba(182,149,102,0.40);
+  --border-accent:  rgba(182,149,102,0.30);
+
+  --hover-bg:       rgba(182,149,102,0.06);
+  --active-bg:      rgba(182,149,102,0.12);
+
+  --shadow-card:     0 0 0 1px rgba(182,149,102,0.18), 0 8px 24px -8px rgba(0,0,0,0.5);
+  --shadow-floating: 0 18px 40px -12px rgba(0,0,0,0.7), 0 0 24px -4px rgba(159,34,65,0.30);
+  --shadow-glow:     0 0 24px -4px rgba(159, 34, 65, 0.4), inset 0 1px 0 0 rgba(255,255,255,0.04);
+
+  --header-bg:
+    radial-gradient(ellipse at 0% 0%, rgba(182,149,102,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(0,0,0,0.25) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(159,34,65,0.96) 0%, rgba(92,46,55,0.96) 100%);
+  --header-fg: #FFFFFF;
+  --header-border: rgba(182, 149, 102, 0.20);
+
+  --body-bg:
+    radial-gradient(ellipse at 20% 15%, rgba(182,149,102,0.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 85%, rgba(159,34,65,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(74,26,46,0.35) 0%, transparent 60%),
     linear-gradient(180deg, #0f0608 0%, #1a0b10 50%, #0a0507 100%);
+}
+
+html { scrollbar-gutter: stable; }
+html, body { max-width: 100vw; overflow-x: hidden; }
+
+body {
+  background: var(--body-bg);
   background-attachment: fixed;
-  color: #f8fafc;
+  color: var(--text-primary);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: 'cv11', 'ss01', 'ss03';
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Páginas con fondo claro (login, recuperar) usan esta clase para resetear */
 body.bg-light {
-  background: #FAF8F5;
-  color: #1a1a1a;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
-/* === Tipografía institucional con tabular-nums para datos === */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
+/* === Utilidades === */
+.tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* === Animaciones del login institucional === */
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
-  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.8; }
-}
+.text-theme-primary       { color: var(--brand-primary); }
+.text-theme-primary-hover { color: var(--brand-primary-3); }
+.text-theme-accent        { color: var(--brand-accent); }
+.border-theme-primary     { border-color: var(--brand-primary); }
 
-@keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.5; }
-  50% { transform: scale(1); opacity: 0.2; }
-  100% { transform: scale(0.8); opacity: 0.5; }
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-  20%, 40%, 60%, 80% { transform: translateX(4px); }
-}
-
-.animate-float { animation: float linear infinite; }
-.animate-pulse-ring { animation: pulse-ring 4s ease-in-out infinite; }
-.animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
-.animate-shake { animation: shake 0.5s ease-in-out; }
-
-/* === Tema institucional reusable === */
-.text-theme-primary { color: #9F2241; }
-.text-theme-primary-hover { color: #5C2E37; }
-.text-theme-accent { color: #B69566; }
-.border-theme-primary { border-color: #9F2241; }
 .bg-theme-gradient {
-  background: linear-gradient(135deg, #9F2241 0%, #5C2E37 100%);
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-3) 100%);
 }
 .bg-theme-accent-gradient {
-  background: linear-gradient(135deg, #B69566 0%, #9B6F4A 100%);
+  background: linear-gradient(135deg, var(--brand-accent) 0%, var(--brand-accent-2) 100%);
 }
 
-/* === Glassmorphism INSTITUCIONAL — 3 variantes ===
-   blanco:  fondo claro premium con sombra suave + ring
-   gris:    fondo neutro con tinte cálido institucional
-   oscuro:  fondo oscuro con glow dorado/vino
-*/
+/* Tarjeta institucional adaptativa */
+.inst-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.inst-card-hover:hover {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
 .inst-card-light {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
   border: 1px solid rgba(159, 34, 65, 0.08);
@@ -127,7 +188,6 @@ body.bg-light {
   transform: translateY(-2px);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .inst-card-dark-hover:hover {
   border-color: rgba(182, 149, 102, 0.4);
   box-shadow:
@@ -135,33 +195,14 @@ body.bg-light {
     0 0 0 1px rgba(182, 149, 102, 0.3);
 }
 
-/* === Glow text para números importantes === */
-.glow-gold {
-  text-shadow:
-    0 0 8px rgba(182, 149, 102, 0.6),
-    0 0 24px rgba(182, 149, 102, 0.25);
-}
-.glow-guinda {
-  text-shadow:
-    0 0 8px rgba(159, 34, 65, 0.55),
-    0 0 24px rgba(159, 34, 65, 0.25);
-}
+.glow-gold   { text-shadow: 0 0 8px rgba(182, 149, 102, 0.6), 0 0 24px rgba(182, 149, 102, 0.25); }
+.glow-guinda { text-shadow: 0 0 8px rgba(159, 34, 65, 0.55), 0 0 24px rgba(159, 34, 65, 0.25); }
+.shadow-glow-gold { box-shadow: 0 0 20px rgba(182, 149, 102, 0.25), inset 0 0 20px rgba(182, 149, 102, 0.05); }
+.border-glow-gold { border: 1px solid rgba(182, 149, 102, 0.3); }
 
-/* Box shadow glow */
-.shadow-glow-gold {
-  box-shadow:
-    0 0 20px rgba(182, 149, 102, 0.25),
-    inset 0 0 20px rgba(182, 149, 102, 0.05);
-}
-.border-glow-gold {
-  border: 1px solid rgba(182, 149, 102, 0.3);
-}
-
-/* Card analytics legacy — usa la versión nueva por compatibilidad */
 .analytics-card { @apply inst-card-dark; }
 .analytics-card-hover { @apply inst-card-dark-hover; }
 
-/* Background dashboard analytics */
 .bg-analytics {
   background:
     radial-gradient(ellipse at 20% 15%, rgba(182, 149, 102, 0.12) 0%, transparent 45%),
@@ -170,7 +211,30 @@ body.bg-light {
     linear-gradient(180deg, #0f0608 0%, #1a0b10 50%, #0a0507 100%);
 }
 
-/* === Animaciones premium === */
+/* === Animaciones === */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.8; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1); opacity: 0.2; }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+.animate-float { animation: float linear infinite; }
+.animate-pulse-ring { animation: pulse-ring 4s ease-in-out infinite; }
+.animate-shimmer { animation: shimmer 3s ease-in-out infinite; }
+.animate-shake { animation: shake 0.5s ease-in-out; }
+
 @keyframes glow-pulse {
   0%, 100% { text-shadow: 0 0 8px rgba(182,149,102,0.6), 0 0 20px rgba(182,149,102,0.25); }
   50% { text-shadow: 0 0 12px rgba(182,149,102,1), 0 0 32px rgba(182,149,102,0.55); }
@@ -183,7 +247,6 @@ body.bg-light {
 }
 .animate-slide-up { animation: slide-up-fade 0.6s ease-out forwards; }
 
-/* Gradient text gold-to-guinda */
 .text-gradient-gold {
   background: linear-gradient(135deg, #B69566 0%, #DDC9A3 50%, #9B6F4A 100%);
   -webkit-background-clip: text;
@@ -197,19 +260,4 @@ body.bg-light {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-}
-
-/* === Gradiente de header institucional === */
-.bg-header-inst {
-  background:
-    radial-gradient(ellipse at 0% 0%, rgba(182,149,102,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 100% 100%, rgba(0,0,0,0.2) 0%, transparent 50%),
-    linear-gradient(135deg, #9F2241 0%, #5C2E37 100%);
-}
-
-/* === Tabular para datos numéricos en tablas === */
-table.data-table td.numeric,
-.tabular {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum';
 }

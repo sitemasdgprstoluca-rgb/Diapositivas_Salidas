@@ -5,6 +5,7 @@ import HistoricoChart from '../../../components/HistoricoChart';
 import HexKpiCard from '../../../components/ui/HexKpiCard';
 import HudFrame from '../../../components/ui/HudFrame';
 import GaugeCard from '../../../components/ui/GaugeCard';
+import RubrosTable from '../../../components/RubrosTable';
 import {
   IconTarget,
   IconPin,
@@ -267,83 +268,7 @@ export default async function CentroPage({ params }) {
           tone="dark"
           badge={<IconPuzzle className="text-dorado-300" />}
         >
-          <div className="overflow-x-auto -m-5">
-            <table className="w-full data-table">
-              <thead>
-                <tr className="border-b border-dorado-500/15">
-                  <th className="text-left px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                    Rubro
-                  </th>
-                  <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                    Primera
-                  </th>
-                  <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                    Actual
-                  </th>
-                  <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                    Promedio
-                  </th>
-                  <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                    Cambio
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rubrosArr.map((r, i) => {
-                  const isLast = i === rubrosArr.length - 1;
-                  return (
-                    <tr
-                      key={r.id}
-                      className={`hover:bg-dorado-500/5 transition ${
-                        !isLast ? 'border-b border-white/5' : ''
-                      }`}
-                    >
-                      <td className="px-6 py-3 font-medium text-white/90">
-                        <span className="text-dorado-300 font-bold mr-2 tabular-nums">
-                          {r.orden}.
-                        </span>
-                        {r.nombre}
-                      </td>
-                      <td className="text-center px-6 py-3">
-                        <span
-                          className="inline-block min-w-[42px] px-2 py-0.5 rounded text-white font-bold text-sm tabular-nums"
-                          style={{ backgroundColor: colorPorCalificacion(r.primeraCal) }}
-                        >
-                          {r.primeraCal ?? '—'}
-                        </span>
-                      </td>
-                      <td className="text-center px-6 py-3">
-                        <span
-                          className="inline-block min-w-[42px] px-2 py-0.5 rounded text-white font-bold text-sm tabular-nums"
-                          style={{ backgroundColor: colorPorCalificacion(r.ultimaCal) }}
-                        >
-                          {r.ultimaCal ?? '—'}
-                        </span>
-                      </td>
-                      <td className="text-center px-6 py-3 text-white/85 font-semibold tabular-nums">
-                        {r.promedio.toFixed(2)}
-                      </td>
-                      <td className="text-center px-6 py-3">
-                        {r.delta == null ? (
-                          <span className="text-white/35 text-sm">—</span>
-                        ) : r.delta > 0 ? (
-                          <span className="text-emerald-400 font-bold tabular-nums">
-                            ▲ +{r.delta}
-                          </span>
-                        ) : r.delta < 0 ? (
-                          <span className="text-red-400 font-bold tabular-nums">
-                            ▼ {r.delta}
-                          </span>
-                        ) : (
-                          <span className="text-white/55 font-bold tabular-nums">= 0</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <RubrosTable rubros={rubrosArr} />
         </HudFrame>
       </main>
     </>

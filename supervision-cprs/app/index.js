@@ -250,7 +250,7 @@ export default function HomeScreen() {
 
           {supabaseEstaConfigurado() && (
             <View style={styles.syncRow}>
-              <View style={[styles.syncDot, { backgroundColor: online ? '#7CB342' : '#F9A825' }]} />
+              <View style={[styles.syncDot, { backgroundColor: online ? COLORS.success : COLORS.warning }]} />
               <Text style={styles.syncText}>
                 {online ? 'En línea' : 'Sin conexión'}
               </Text>
@@ -509,10 +509,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   estadoBorrador: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: COLORS.warningBg,
   },
   estadoFinalizado: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: COLORS.successBg,
   },
   badgeDot: {
     width: 6,
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   textBorrador: {
-    color: '#E65100',
+    color: COLORS.warningText,
   },
   textFinalizado: {
     color: COLORS.success,

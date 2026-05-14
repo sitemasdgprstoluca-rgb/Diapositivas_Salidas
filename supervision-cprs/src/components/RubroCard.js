@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Switch, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { colorPorCalificacion } from '../constants/data';
 import TextInput from './TextInput';
@@ -202,7 +203,12 @@ const RubroCard = ({
 
         {rubro.noAplica && (
           <View style={styles.naInfo}>
-            <Text style={styles.naInfoIcon}>ℹ️</Text>
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color={COLORS.textSecondary}
+              style={styles.naInfoIcon}
+            />
             <Text style={styles.naInfoText}>
               Este rubro se marcó como "No aplica". No contará en el promedio general del C.P.R.S.
               Se incluirá una diapositiva informativa en la presentación.
@@ -401,8 +407,8 @@ const styles = StyleSheet.create({
     borderLeftColor: COLORS.secondary,
   },
   naInfoIcon: {
-    fontSize: 18,
     marginRight: 10,
+    marginTop: 1,
   },
   naInfoText: {
     flex: 1,

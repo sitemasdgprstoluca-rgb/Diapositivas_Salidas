@@ -8,8 +8,12 @@ export const COLORS = {
   secondaryLight: '#E5C474', // Dorado claro
   accent: '#D4A94C',       // Dorado acento
   success: '#2E7D32',      // Verde éxito
+  successBg: '#E8F5E9',    // Fondo verde suave (toasts)
   warning: '#F9A825',      // Amarillo advertencia
+  warningBg: '#FFF3E0',    // Fondo amarillo suave (toasts)
+  warningText: '#E65100',  // Texto sobre warningBg
   error: '#C62828',        // Rojo error
+  errorDark: '#8A1C1C',    // Rojo oscuro (gradientes)
   background: '#FAF8F5',   // Fondo crema claro
   surface: '#ffffff',      // Superficies blancas
   text: '#1a1a1a',         // Texto principal

@@ -15,6 +15,7 @@ import type { Config } from 'tailwindcss';
  *   - Ring 1px sobre border 1px (outline suave > línea dura)
  */
 const config: Config = {
+  darkMode: 'class',
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',

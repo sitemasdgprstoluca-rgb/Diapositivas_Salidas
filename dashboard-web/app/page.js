@@ -3,14 +3,13 @@ import { crearClienteServidor } from '../lib/supabase-server';
 import Header from '../components/Header';
 import HexKpiCard from '../components/ui/HexKpiCard';
 import HudFrame from '../components/ui/HudFrame';
+import CentrosTable from '../components/CentrosTable';
 import {
   IconBuilding,
   IconClipboard,
   IconChart,
   IconShield,
-  IconAntenna,
 } from '../components/ui/icons';
-import { colorPorCalificacion, formatearFecha } from '../lib/colores';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,20 +43,21 @@ async function cargarDatos() {
     agrupados[nombre].push(sup);
   }
 
-  // Si tenemos catálogo, usamos su orden + nombres como base, mergeamos
-  // las supervisiones agrupadas. Centros sin supervisiones aparecen
-  // igualmente como "pendientes". Si NO hay catálogo, fallback al
-  // comportamiento previo: derivar del set de supervisiones.
   const tieneCatalogo = catalogoData && catalogoData.length > 0;
   const nombresBase = tieneCatalogo
     ? catalogoData.map((c) => c.nombre)
     : Object.keys(agrupados);
 
-  // Asegurar que cualquier supervisión con nombre fuera del catálogo
-  // también aparezca (datos legacy o tipos inesperados).
   for (const nombre of Object.keys(agrupados)) {
     if (!nombresBase.includes(nombre)) nombresBase.push(nombre);
   }
+
+  const estadoDe = (prom) => {
+    if (prom == null) return 'Pendiente';
+    if (prom >= 8) return 'Óptimo';
+    if (prom >= 6) return 'Aceptable';
+    return 'En riesgo';
+  };
 
   const centros = nombresBase.map((nombre) => {
     const items = agrupados[nombre] || [];
@@ -74,11 +74,11 @@ async function cargarDatos() {
       promedioAnterior: anterior?.promedio_general ?? null,
       delta,
       ultimaFecha: ultima?.fecha_hora_supervision || null,
+      estado: estadoDe(ultima?.promedio_general ?? null),
     };
   });
 
   if (!tieneCatalogo) {
-    // Sin catálogo, ordenar alfabéticamente
     centros.sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
@@ -117,10 +117,10 @@ export default async function HomePage() {
             </span>
           </div>
           <h1 className="text-5xl lg:text-6xl font-black tracking-tight leading-none">
-            <span className="text-white">Panel </span>
+            <span style={{ color: 'var(--text-primary)' }}>Panel </span>
             <span className="text-gradient-gold">Institucional</span>
           </h1>
-          <p className="text-white/65 text-lg mt-4 max-w-2xl leading-relaxed">
+          <p className="text-lg mt-4 max-w-2xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             Vista consolidada de supervisiones, promedios y tendencias por centro.
             Selecciona un centro para ver su histórico completo.
           </p>
@@ -157,10 +157,10 @@ export default async function HomePage() {
           />
         </div>
 
-        {/* Tabla de centros */}
+        {/* Tabla de centros con filtros + sort + búsqueda */}
         <HudFrame
           title="Centros penitenciarios"
-          subtitle="Click sobre un centro para abrir su histórico"
+          subtitle="Filtra por estado, busca por nombre, ordena por cualquier columna"
           tone="dark"
           badge={
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-dorado-500/15 border border-dorado-500/30 text-[11px] font-bold text-dorado-300 tabular-nums">
@@ -169,104 +169,10 @@ export default async function HomePage() {
             </span>
           }
         >
-          {centros.length === 0 ? (
-            <div className="py-16 text-center">
-              <div className="text-dorado-300/70 mb-5 flex justify-center">
-                <IconAntenna width={48} height={48} />
-              </div>
-              <p className="text-white/70 text-lg font-semibold">
-                Aún no hay supervisiones finalizadas.
-              </p>
-              <p className="text-white/50 text-sm mt-2 max-w-md mx-auto">
-                Cuando los supervisores generen una presentación desde la app móvil,
-                aparecerán aquí en tiempo real.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto -m-5">
-              <table className="w-full data-table">
-                <thead>
-                  <tr className="border-b border-dorado-500/15">
-                    <th className="text-left px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                      C.P.R.S.
-                    </th>
-                    <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                      Supervisiones
-                    </th>
-                    <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                      Última
-                    </th>
-                    <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                      Promedio actual
-                    </th>
-                    <th className="text-center px-6 py-3 text-[10px] font-bold text-dorado-300 uppercase tracking-[0.18em]">
-                      Tendencia
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {centros.map((c, i) => {
-                    const color = colorPorCalificacion(Math.round(c.promedioActual));
-                    const isLast = i === centros.length - 1;
-                    return (
-                      <tr
-                        key={c.nombre}
-                        className={`group transition-colors hover:bg-dorado-500/5 ${
-                          !isLast ? 'border-b border-white/5' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4">
-                          <Link
-                            href={`/cprs/${encodeURIComponent(c.nombre)}`}
-                            className="font-semibold text-white group-hover:text-dorado-300 transition-colors flex items-center gap-2"
-                          >
-                            <span className="w-1 h-1 rounded-full bg-dorado-500/0 group-hover:bg-dorado-500 transition-colors" />
-                            {c.nombre}
-                          </Link>
-                        </td>
-                        <td className="text-center px-6 py-4 text-white/85 font-medium tabular-nums numeric">
-                          {c.totalSupervisiones}
-                        </td>
-                        <td className="text-center px-6 py-4 text-white/55 text-sm tabular-nums">
-                          {formatearFecha(c.ultimaFecha)}
-                        </td>
-                        <td className="text-center px-6 py-4">
-                          <span
-                            className="inline-block min-w-[68px] px-3.5 py-1 rounded-full text-white font-bold tabular-nums"
-                            style={{
-                              backgroundColor: color,
-                              boxShadow: `0 0 14px -2px ${color}88`,
-                            }}
-                          >
-                            {c.promedioActual?.toFixed(2) ?? '—'}
-                          </span>
-                        </td>
-                        <td className="text-center px-6 py-4">
-                          {c.delta == null ? (
-                            <span className="text-white/35 text-sm">—</span>
-                          ) : c.delta > 0 ? (
-                            <span className="text-emerald-400 font-bold tabular-nums">
-                              ▲ +{c.delta.toFixed(2)}
-                            </span>
-                          ) : c.delta < 0 ? (
-                            <span className="text-red-400 font-bold tabular-nums">
-                              ▼ {c.delta.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-white/55 font-bold tabular-nums">
-                              = 0.00
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <CentrosTable centros={centros} />
         </HudFrame>
       </main>
     </>
   );
 }
+

@@ -22,9 +22,7 @@ import {
   calcularRadarData,
   generarEvolucionData,
 } from '@/lib/analytics';
-
-// Paleta institucional para diferenciar centros (vino, dorado, oscuro, complementarios)
-const PALETA = ['#9F2241', '#B69566', '#5C2E37', '#9B6F4A', '#7A5638', '#B94D69', '#C9B07F'];
+import { PALETA_CENTROS as PALETA } from '@/lib/palettes';
 
 export default function CompararCliente({ centrosDisponibles, todasSups, rubrosPorSup }) {
   const [seleccionados, setSeleccionados] = useState(centrosDisponibles.slice(0, Math.min(3, centrosDisponibles.length)));

@@ -385,7 +385,7 @@ export default function VistaPreviaScreen() {
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={generando && tipoGenerando === 'pdf' ? [COLORS.textSecondary, COLORS.textSecondary] : ['#C62828', '#8A1C1C']}
+            colors={generando && tipoGenerando === 'pdf' ? [COLORS.textSecondary, COLORS.textSecondary] : [COLORS.error, COLORS.errorDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.generateButtonGradient}

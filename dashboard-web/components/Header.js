@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { crearClienteNavegador } from '../lib/supabase-browser';
 import { IconKey } from './ui/icons';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header({ email }) {
   const router = useRouter();
@@ -38,14 +39,14 @@ export default function Header({ email }) {
 
   return (
     <header
-      className="sticky top-0 z-50 border-b border-dorado-500/20"
+      className="sticky top-0 z-50 border-b"
       style={{
-        background:
-          'radial-gradient(ellipse at 0% 0%, rgba(182,149,102,0.18) 0%, transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(0,0,0,0.25) 0%, transparent 55%), linear-gradient(135deg, rgba(159,34,65,0.96) 0%, rgba(92,46,55,0.96) 100%)',
+        background: 'var(--header-bg)',
+        borderColor: 'var(--header-border)',
         backdropFilter: 'blur(12px) saturate(140%)',
         WebkitBackdropFilter: 'blur(12px) saturate(140%)',
         boxShadow:
-          '0 8px 32px -12px rgba(0,0,0,0.6), 0 2px 24px -8px rgba(159,34,65,0.5), inset 0 -1px 0 0 rgba(182,149,102,0.2)',
+          '0 8px 32px -12px rgba(0,0,0,0.45), 0 2px 24px -8px rgba(159,34,65,0.35), inset 0 -1px 0 0 rgba(182,149,102,0.18)',
       }}
     >
       {/* Línea dorada superior */}
@@ -94,6 +95,7 @@ export default function Header({ email }) {
               {email}
             </span>
           )}
+          <ThemeToggle />
           <Link
             href="/cambiar-password"
             className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition border border-white/15 hidden sm:inline-flex items-center"
