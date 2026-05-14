@@ -4,8 +4,8 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { SupervisionProvider } from '../src/context/SupervisionContext';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { SyncProvider } from '../src/context/SyncProvider';
+import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import ErrorBoundary from '../src/components/ErrorBoundary';
-import { COLORS } from '../src/constants/theme';
 import { StatusBar } from 'expo-status-bar';
 import { supabaseEstaConfigurado } from '../src/config/supabase';
 
@@ -18,6 +18,7 @@ function AuthGuard({ children }) {
   const router = useRouter();
   const segments = useSegments();
   const { autenticado, cargando } = useAuth();
+  const { colors } = useTheme();
 
   useEffect(() => {
     if (!supabaseEstaConfigurado()) return; // modo local sin auth
@@ -37,8 +38,8 @@ function AuthGuard({ children }) {
 
   if (supabaseEstaConfigurado() && cargando) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -46,40 +47,52 @@ function AuthGuard({ children }) {
   return children;
 }
 
+function ThemedStack() {
+  const { colors, isDark } = useTheme();
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'light'} backgroundColor={colors.primary} />
+      <AuthGuard>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: colors.white,
+            headerTitleStyle: { fontWeight: 'bold' },
+            headerBackTitle: 'Volver',
+            animation: 'slide_from_right',
+            animationDuration: 200,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            fullScreenGestureEnabled: true,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false, title: 'Inicio', animation: 'fade' }} />
+          <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="registro" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="recuperar-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="cambiar-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="datos-generales" options={{ headerShown: false, title: 'Datos Generales' }} />
+          <Stack.Screen name="areas" options={{ headerShown: false, title: 'Rubros' }} />
+          <Stack.Screen name="vista-previa" options={{ headerShown: false, title: 'Vista Previa' }} />
+        </Stack>
+      </AuthGuard>
+    </>
+  );
+}
+
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-    <AuthProvider>
-      <SyncProvider>
-      <SupervisionProvider>
-        <StatusBar style="light" backgroundColor={COLORS.primary} />
-        <AuthGuard>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: COLORS.primary },
-              headerTintColor: COLORS.white,
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerBackTitle: 'Volver',
-              animation: 'slide_from_right',
-              animationDuration: 200,
-              gestureEnabled: true,
-              gestureDirection: 'horizontal',
-              fullScreenGestureEnabled: true,
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false, title: 'Inicio', animation: 'fade' }} />
-            <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-            <Stack.Screen name="registro" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="recuperar-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="cambiar-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-            <Stack.Screen name="datos-generales" options={{ headerShown: false, title: 'Datos Generales' }} />
-            <Stack.Screen name="areas" options={{ headerShown: false, title: 'Rubros' }} />
-            <Stack.Screen name="vista-previa" options={{ headerShown: false, title: 'Vista Previa' }} />
-          </Stack>
-        </AuthGuard>
-      </SupervisionProvider>
-      </SyncProvider>
-    </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <SyncProvider>
+            <SupervisionProvider>
+              <ThemedStack />
+            </SupervisionProvider>
+          </SyncProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
@@ -89,6 +102,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
   },
 });

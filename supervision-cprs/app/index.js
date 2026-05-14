@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { useAuth } from '../src/context/AuthContext';
 import { useSync } from '../src/context/SyncProvider';
-import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
+import { useTheme } from '../src/context/ThemeContext';
+import ThemeToggle from '../src/components/ThemeToggle';
+import { SIZES, SHADOWS } from '../src/constants/theme';
 import { formatearFechaDisplay } from '../src/utils/dateUtils';
 import { supabaseEstaConfigurado } from '../src/config/supabase';
 
@@ -25,6 +27,9 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
+  const COLORS = colors; // alias para JSX heredado
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const {
     supervisiones,
     cargarSupervisiones,
@@ -228,8 +233,9 @@ export default function HomeScreen() {
             <View style={styles.headerBadge}>
               <Text style={styles.headerBadgeText}>CPRS</Text>
             </View>
-            {supabaseEstaConfigurado() && usuario && (
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+            {supabaseEstaConfigurado() && usuario ? (
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <ThemeToggle light />
                 <TouchableOpacity
                   style={styles.logoutBtn}
                   onPress={() => router.push('/cambiar-password')}
@@ -241,6 +247,8 @@ export default function HomeScreen() {
                   <Text style={styles.logoutBtnText}>Salir  ⎋</Text>
                 </TouchableOpacity>
               </View>
+            ) : (
+              <ThemeToggle light />
             )}
           </View>
           <Text style={styles.headerTitle}>Supervisión</Text>
@@ -312,7 +320,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
