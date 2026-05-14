@@ -114,4 +114,6 @@ jobs:
         if: env.EXPO_TOKEN != ''
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas update --branch production --message "ci: ${{ github.event.head_commit.message }}" --non-interactive
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          eas update --branch production --message "ci: $COMMIT_MSG" --non-interactive
