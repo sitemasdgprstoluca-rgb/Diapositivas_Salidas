@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Switch, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity, Switch, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
-import { colorPorCalificacion } from '../constants/data';
+import { SIZES, SHADOWS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { colorPorCalificacion, calcularMaxCalificacion } from '../constants/data';
 import TextInput from './TextInput';
 import PhotoPicker from './PhotoPicker';
 
@@ -16,6 +17,10 @@ const RubroCard = ({
   onAddPhoto,
   onRemovePhoto,
 }) => {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   const handleNoAplica = (value) => {
     onUpdate({
       noAplica: value,
@@ -25,7 +30,29 @@ const RubroCard = ({
     });
   };
 
+  const topeInfo = useMemo(
+    () => calcularMaxCalificacion(rubro.criterios),
+    [rubro.criterios]
+  );
+
   const handleCalificacion = (valor) => {
+    // Validación: no se puede dar más calificación que el tope derivado de criterios.
+    if (topeInfo.totalCriterios > 0 && !topeInfo.completos) {
+      Alert.alert(
+        'Faltan criterios por evaluar',
+        `Marca SÍ o NO en los ${topeInfo.totalCriterios} criterios antes de calificar. Llevas ${topeInfo.respondidos} de ${topeInfo.totalCriterios}.`,
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
+    if (valor > topeInfo.tope) {
+      Alert.alert(
+        'Calificación no permitida',
+        `Con ${topeInfo.cumplidos} de ${topeInfo.totalCriterios} criterios cumplidos, la calificación máxima posible es ${topeInfo.tope}. Cumple más criterios SÍ para subir el tope.`,
+        [{ text: 'Entendido' }]
+      );
+      return;
+    }
     onUpdate({ calificacion: valor });
   };
 
@@ -38,10 +65,24 @@ const RubroCard = ({
 
   const handleCriterio = (criterioId, cumple) => {
     onUpdateCriterio(rubro.id, criterioId, cumple);
+    // Si la calificación actual queda por encima del nuevo tope, la limpiamos.
+    const proximosCriterios = (rubro.criterios || []).map((c) =>
+      c.id === criterioId ? { ...c, cumple } : c
+    );
+    const proximoTope = calcularMaxCalificacion(proximosCriterios);
+    if (
+      proximoTope.completos &&
+      typeof rubro.calificacion === 'number' &&
+      rubro.calificacion > proximoTope.tope
+    ) {
+      onUpdate({ calificacion: proximoTope.tope });
+    }
   };
 
   const colorCal = colorPorCalificacion(rubro.calificacion);
   const tieneCriterios = rubro.criterios && rubro.criterios.length > 0;
+  const cumpleCount = (rubro.criterios || []).filter((c) => c.cumple === true).length;
+  const noCumpleCount = (rubro.criterios || []).filter((c) => c.cumple === false).length;
 
   return (
     <View style={styles.container}>
@@ -85,42 +126,45 @@ const RubroCard = ({
 
         {!rubro.noAplica && (
           <>
-            {/* Calificación 1-10 */}
-            <Text style={styles.sectionLabel}>Calificación (1 al 10) *</Text>
-            <View style={styles.califGrid}>
-              {CALIFICACIONES.map((n) => {
-                const seleccionado = rubro.calificacion === n;
-                const colorN = colorPorCalificacion(n);
-                return (
-                  <TouchableOpacity
-                    key={n}
-                    style={[
-                      styles.califBtn,
-                      seleccionado && { backgroundColor: colorN, borderColor: colorN },
-                    ]}
-                    onPress={() => handleCalificacion(n)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.califBtnText,
-                        seleccionado && styles.califBtnTextActive,
-                      ]}
-                    >
-                      {n}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Checklist de criterios */}
+            {/* Checklist de criterios va PRIMERO ahora — define el tope */}
             {tieneCriterios && (
               <>
-                <Text style={styles.sectionLabel}>Criterios a evaluar *</Text>
+                <View style={styles.criteriosHeader}>
+                  <Text style={styles.sectionLabel}>Criterios a evaluar *</Text>
+                  <View style={styles.criteriosCounter}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color={COLORS.success}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.criteriosCounterText, { color: COLORS.success }]}>
+                      {cumpleCount}
+                    </Text>
+                    <Text style={styles.criteriosCounterSep}> · </Text>
+                    <Ionicons
+                      name="close-circle"
+                      size={14}
+                      color={COLORS.error}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.criteriosCounterText, { color: COLORS.error }]}>
+                      {noCumpleCount}
+                    </Text>
+                    <Text style={styles.criteriosCounterSep}>
+                      {' '}/ {topeInfo.totalCriterios}
+                    </Text>
+                  </View>
+                </View>
                 <View style={styles.criteriosBox}>
                   {rubro.criterios.map((crit, idx) => (
-                    <View key={crit.id} style={styles.criterioRow}>
+                    <View
+                      key={crit.id}
+                      style={[
+                        styles.criterioRow,
+                        idx === rubro.criterios.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 },
+                      ]}
+                    >
                       <Text style={styles.criterioTexto}>
                         {idx + 1}. {crit.texto}
                       </Text>
@@ -131,7 +175,14 @@ const RubroCard = ({
                             crit.cumple === true && styles.criterioBtnSi,
                           ]}
                           onPress={() => handleCriterio(crit.id, true)}
+                          activeOpacity={0.8}
                         >
+                          <Ionicons
+                            name="checkmark"
+                            size={14}
+                            color={crit.cumple === true ? COLORS.white : COLORS.success}
+                            style={{ marginRight: 4 }}
+                          />
                           <Text
                             style={[
                               styles.criterioBtnText,
@@ -147,7 +198,14 @@ const RubroCard = ({
                             crit.cumple === false && styles.criterioBtnNo,
                           ]}
                           onPress={() => handleCriterio(crit.id, false)}
+                          activeOpacity={0.8}
                         >
+                          <Ionicons
+                            name="close"
+                            size={14}
+                            color={crit.cumple === false ? COLORS.white : COLORS.error}
+                            style={{ marginRight: 4 }}
+                          />
                           <Text
                             style={[
                               styles.criterioBtnText,
@@ -163,6 +221,97 @@ const RubroCard = ({
                 </View>
               </>
             )}
+
+            {/* Calificación 1-10 */}
+            <View style={styles.califHeader}>
+              <Text style={styles.sectionLabel}>Calificación (1 al 10) *</Text>
+              {tieneCriterios && (
+                <View
+                  style={[
+                    styles.topePill,
+                    {
+                      backgroundColor: topeInfo.completos
+                        ? colorPorCalificacion(topeInfo.tope) + '22'
+                        : COLORS.warningBg,
+                      borderColor: topeInfo.completos
+                        ? colorPorCalificacion(topeInfo.tope)
+                        : COLORS.warning,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={topeInfo.completos ? 'shield-checkmark' : 'time-outline'}
+                    size={12}
+                    color={
+                      topeInfo.completos
+                        ? colorPorCalificacion(topeInfo.tope)
+                        : COLORS.warningText || COLORS.warning
+                    }
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.topePillText,
+                      {
+                        color: topeInfo.completos
+                          ? colorPorCalificacion(topeInfo.tope)
+                          : COLORS.warningText || COLORS.warning,
+                      },
+                    ]}
+                  >
+                    {topeInfo.completos
+                      ? `Máx ${topeInfo.tope} (${topeInfo.cumplidos}/${topeInfo.totalCriterios})`
+                      : `Faltan ${topeInfo.totalCriterios - topeInfo.respondidos} criterios`}
+                  </Text>
+                </View>
+              )}
+            </View>
+            {tieneCriterios && topeInfo.completos && topeInfo.tope < 10 && (
+              <Text style={styles.topeHint}>
+                Con {topeInfo.cumplidos} de {topeInfo.totalCriterios} criterios cumplidos,
+                la calificación máxima posible es {topeInfo.tope}.
+              </Text>
+            )}
+            <View style={styles.califGrid}>
+              {CALIFICACIONES.map((n) => {
+                const seleccionado = rubro.calificacion === n;
+                const colorN = colorPorCalificacion(n);
+                const bloqueado =
+                  tieneCriterios && (
+                    !topeInfo.completos || n > topeInfo.tope
+                  );
+                return (
+                  <TouchableOpacity
+                    key={n}
+                    style={[
+                      styles.califBtn,
+                      seleccionado && { backgroundColor: colorN, borderColor: colorN },
+                      bloqueado && !seleccionado && styles.califBtnLocked,
+                    ]}
+                    onPress={() => handleCalificacion(n)}
+                    activeOpacity={0.7}
+                  >
+                    {bloqueado && !seleccionado && (
+                      <Ionicons
+                        name="lock-closed"
+                        size={10}
+                        color={COLORS.textLight}
+                        style={styles.califLockIcon}
+                      />
+                    )}
+                    <Text
+                      style={[
+                        styles.califBtnText,
+                        seleccionado && styles.califBtnTextActive,
+                        bloqueado && !seleccionado && styles.califBtnTextLocked,
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {/* Switch sin novedad */}
             <View style={styles.switchContainer}>
@@ -220,11 +369,13 @@ const RubroCard = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.borderRadiusLarge,
     marginBottom: SIZES.margin,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: COLORS.borderSubtle,
     ...SHADOWS.medium,
     overflow: 'hidden',
   },
@@ -301,6 +452,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: COLORS.background,
     borderRadius: SIZES.borderRadius,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: COLORS.borderSubtle,
   },
   switchLabelContainer: {
     flex: 1,
@@ -324,6 +477,31 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 0.3,
   },
+  califHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  topePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  topePillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  topeHint: {
+    fontSize: SIZES.xs,
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
   califGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -336,9 +514,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceAlt || COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  califBtnLocked: {
+    backgroundColor: COLORS.disabled || COLORS.background,
+    borderColor: COLORS.borderSubtle || COLORS.border,
+    opacity: 0.55,
+  },
+  califLockIcon: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
   },
   califBtnText: {
     fontSize: SIZES.base,
@@ -347,6 +536,35 @@ const styles = StyleSheet.create({
   },
   califBtnTextActive: {
     color: COLORS.white,
+  },
+  califBtnTextLocked: {
+    color: COLORS.textLight,
+    textDecorationLine: 'line-through',
+  },
+  criteriosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  criteriosCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle || COLORS.border,
+  },
+  criteriosCounterText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  criteriosCounterSep: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
   },
   criteriosBox: {
     backgroundColor: COLORS.background,
@@ -360,7 +578,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border + '60',
+    borderBottomColor: (COLORS.border || '#000') + '60',
   },
   criterioTexto: {
     fontSize: SIZES.sm,
@@ -374,12 +592,14 @@ const styles = StyleSheet.create({
   },
   criterioBtn: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: COLORS.border,
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceAlt || COLORS.surface,
   },
   criterioBtnSi: {
     backgroundColor: COLORS.success,

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput as RNTextInput, StyleSheet } from 'react-native';
-import { COLORS, SIZES } from '../constants/theme';
+import { SIZES } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const TextInput = ({
   label,
@@ -16,6 +17,9 @@ const TextInput = ({
   inputStyle = {},
   required = false,
 }) => {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   return (
     <View style={[styles.container, style]}>
       {label && (
@@ -47,7 +51,7 @@ const TextInput = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     marginBottom: SIZES.margin,
   },

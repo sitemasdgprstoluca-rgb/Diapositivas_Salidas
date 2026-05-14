@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES } from '../constants/theme';
+import { SIZES } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Select = ({
   label,
@@ -14,6 +15,9 @@ const Select = ({
   allowCustom = false,
   style = {},
 }) => {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showModal, setShowModal] = useState(false);
 
   const selectedOption = options.find(opt => 
@@ -111,7 +115,7 @@ const Select = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     marginBottom: SIZES.margin,
   },

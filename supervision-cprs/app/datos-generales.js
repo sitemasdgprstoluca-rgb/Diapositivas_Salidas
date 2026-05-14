@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,17 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSupervision } from '../src/context/SupervisionContext';
 import { Button, DateTimeInput, Select } from '../src/components';
-import { COLORS, SIZES, SHADOWS } from '../src/constants/theme';
+import ThemeToggle from '../src/components/ThemeToggle';
+import { useTheme } from '../src/context/ThemeContext';
+import { SIZES, SHADOWS } from '../src/constants/theme';
 import { validarDatosGenerales } from '../src/utils/validation';
 import { LISTA_CPRS } from '../src/constants/data';
 import { obtenerCentros } from '../src/utils/centrosCatalogo';
 
 export default function DatosGeneralesScreen() {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { 
@@ -198,14 +203,17 @@ export default function DatosGeneralesScreen() {
       >
         {/* Header con gradiente */}
         <LinearGradient
-          colors={[COLORS.primaryDark, COLORS.primary]}
+          colors={[COLORS.gradientStart || COLORS.primaryDark, COLORS.gradientMid || COLORS.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <TouchableOpacity style={styles.backButton} onPress={handleVolver}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity style={styles.backButton} onPress={handleVolver}>
+              <Ionicons name="arrow-back" size={20} color={COLORS.white} />
+            </TouchableOpacity>
+            <ThemeToggle light />
+          </View>
           <View style={styles.headerContent}>
             <View style={styles.stepBadge}>
               <Text style={styles.stepBadgeText}>PASO 1 DE 4</Text>
@@ -355,7 +363,7 @@ export default function DatosGeneralesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -368,6 +376,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   loadingText: {
     fontSize: SIZES.lg,
@@ -389,7 +403,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white + '20',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   backButtonText: {
     fontSize: 24,
@@ -439,7 +452,18 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: COLORS.borderSubtle,
     ...SHADOWS.medium,
+  },
+  cardIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   cardHeader: {
     flexDirection: 'row',

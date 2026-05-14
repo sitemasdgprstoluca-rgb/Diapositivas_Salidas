@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { SIZES, SHADOWS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Button = ({
   title,
@@ -13,6 +14,9 @@ const Button = ({
   style = {},
   textStyle = {},
 }) => {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const getVariantStyle = () => {
     switch (variant) {
       case 'secondary':
@@ -89,7 +93,7 @@ const Button = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',

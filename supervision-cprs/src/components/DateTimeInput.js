@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SIZES } from '../constants/theme';
+import { SIZES } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { formatearFechaCompleta, formatearHora } from '../utils/dateUtils';
 
 const DateTimeInput = ({
@@ -15,6 +16,9 @@ const DateTimeInput = ({
   placeholder = 'Seleccionar',
   style = {},
 }) => {
+  const { colors, isDark } = useTheme();
+  const COLORS = colors;
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState(mode === 'datetime' ? 'date' : mode);
 
@@ -137,7 +141,7 @@ const DateTimeInput = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS, isDark) => StyleSheet.create({
   container: {
     marginBottom: SIZES.margin,
   },

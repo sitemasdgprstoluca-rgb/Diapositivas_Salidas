@@ -231,3 +231,34 @@ export const colorPorCalificacion = (calificacion) => {
   if (calificacion <= 8) return '#7CB342'; // verde claro
   return '#2E7D32'; // verde fuerte
 };
+
+/**
+ * Calcula la calificación máxima permitida en función de los criterios SÍ/NO
+ * que el supervisor haya marcado. La idea: no se puede dar 10 si la mitad de
+ * los criterios fallaron.
+ *
+ * Reglas:
+ * - Si el rubro no tiene criterios → no hay tope (10 permitido).
+ * - Si ningún criterio fue respondido aún → no hay tope (se informa al usuario).
+ * - Con N criterios totales y K respondidos como SÍ: tope = ceil(K/N * 10).
+ *   Ej: 0/3 → tope 1, 1/3 → 4, 2/3 → 7, 3/3 → 10.
+ * - Mínimo 1 (la escala arranca en 1).
+ *
+ * @param {Array<{cumple: boolean|null}>} criterios
+ * @returns {{ tope: number, totalCriterios: number, cumplidos: number, respondidos: number, completos: boolean }}
+ */
+export const calcularMaxCalificacion = (criterios) => {
+  const total = Array.isArray(criterios) ? criterios.length : 0;
+  if (total === 0) {
+    return { tope: 10, totalCriterios: 0, cumplidos: 0, respondidos: 0, completos: true };
+  }
+  const respondidos = criterios.filter((c) => c.cumple === true || c.cumple === false).length;
+  const cumplidos = criterios.filter((c) => c.cumple === true).length;
+  const completos = respondidos === total;
+  // Si todavía no responden todos, no aplicamos tope (devolvemos 10 con completos=false).
+  if (!completos) {
+    return { tope: 10, totalCriterios: total, cumplidos, respondidos, completos: false };
+  }
+  const tope = Math.max(1, Math.ceil((cumplidos / total) * 10));
+  return { tope, totalCriterios: total, cumplidos, respondidos, completos: true };
+};
